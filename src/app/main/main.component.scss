@@ -1,0 +1,25 @@
+@import '../../styles.scss';
+
+.main-container {
+  text-align: center;
+  margin-top: 50px;
+
+  h1 {
+    font-size: 2em;
+    margin-bottom: 20px;
+  }
+
+  .actions {
+    button {
+      @include button-style($primary-color);
+      margin: 10px;
+    }
+  }
+
+  .auth {
+    button {
+      @include button-style($primary-color);
+      margin: 10px;
+    }
+  }
+}

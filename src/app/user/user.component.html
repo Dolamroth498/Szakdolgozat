@@ -1,0 +1,26 @@
+<div *ngIf="user">
+    <h2>{{ user.name }} - Profil</h2>
+    <p>Email: {{ user.email }}</p>
+    <p>Jelenlegi egyenleg: {{ user.balance }} Ft</p>
+    <p>Pontjaid: {{ user.points }}</p>
+    <p>Ranglista helyezésed: {{ user.leaderboardPosition }}</p>
+  
+    <h3>Vásárolt tárgyak:</h3>
+    <ul>
+      <li *ngFor="let item of user.backgrounds">{{ item }}</li>
+      <li *ngFor="let item of user.cardBacks">{{ item }}</li>
+    </ul>
+  
+    <button (click)="buyItem('Téli', 'background', 20)">Vásárolj Téli Hátteret (20 Ft)</button>
+    <button (click)="buyItem('Vintázs Kártya', 'cardBack', 15)">Vásárolj Vintázs Kártya Hátlapot (15 Ft)</button>
+  
+    <h3>Pontok hozzáadása:</h3>
+    <button (click)="updatePoints(10)">Hozzáad 10 pontot</button>
+  
+    <h3>Ranglista helyezés frissítése:</h3>
+    <button (click)="updateLeaderboardPosition(2)">Frissítsd a ranglista helyezést 2-re</button>
+  </div>
+  <button mat-flat-button
+  color="accent"
+  (click)="backToMain()">Back</button>
+  

@@ -1,0 +1,23 @@
+<div class="leaderboard-container">
+    <h2>Rangsor</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let player of sortedPlayers; let i = index">
+          <td>{{ i + 1 }}</td>
+          <td>{{ player.name }}</td>
+          <td>{{ player.score }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <button mat-flat-button
+  color="accent"
+  (click)="backToMain()">Back</button>
+  

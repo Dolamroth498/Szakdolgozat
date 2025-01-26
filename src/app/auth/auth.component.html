@@ -1,0 +1,22 @@
+<div *ngIf="action === 'register'">
+    <h2>Regisztráció</h2>
+    <form (submit)="register()">
+      <input type="text" placeholder="Felhasználónév" [(ngModel)]="name" />
+      <input type="text" placeholder="Email Cím" [(ngModel)]="email" />
+      <input type="password" placeholder="Jelszó" [(ngModel)]="password" />
+      <button type="submit">Register</button>
+    </form>
+  </div>
+  
+  <div *ngIf="action === 'login'">
+    <h2>Bejelentkezés</h2>
+    <form (submit)="login()">
+      <input type="text" placeholder="Felhasználónév" [(ngModel)]="name" />
+      <input type="password" placeholder="Jelszó" [(ngModel)]="password" />
+      <button type="submit">Login</button>
+    </form>
+  </div>
+  <button mat-flat-button
+  color="accent"
+  (click)="backToMain()">Back</button>
+  

@@ -1,0 +1,18 @@
+<div class="main-container">
+    <h1>Üdvözöllek a játékban!</h1>
+    <div class="actions">
+      <button (click)="startGame('computer')">Új játék gép ellen</button>
+      <button (click)="startGame('human')">Új játék emberek ellen</button>
+      <button (click)="openStore()">Bolt megnyitása</button>
+      <button (click)="goLeaderboard()">Rangsor menézése</button>
+      <button (click)="goUser()">Profil megtekintése</button>
+    </div>
+    <div *ngIf="!isLoggedIn" class="auth">
+      <button routerLink="/auth/register">Regisztráció</button>
+      <button routerLink="/auth/login">Bejelentkezés</button>
+    </div>
+    <div *ngIf="isLoggedIn" class="auth">
+      <button (click)="logout()">Kijelentkezés</button>
+    </div>
+    <router-outlet></router-outlet>
+  </div>

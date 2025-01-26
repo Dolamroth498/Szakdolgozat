@@ -1,0 +1,25 @@
+<div class="game">
+    <div class="player-hand" *ngFor="let player of gameState.players; let i = index">
+      <h3>{{ player.name }}</h3>
+      <div *ngIf="gameState.currentPlayerIndex === i">
+        <button *ngFor="let card of player.cards" (click)="playCard(card)">
+          {{ card.value }} {{ card.suit }}
+        </button>
+      </div>
+    </div>
+  
+    <div class="discard-pile">
+      <h4>Dobóhalom</h4>
+      <p *ngIf="gameState.discardPile.length > 0">
+        {{ gameState.discardPile[gameState.discardPile.length - 1].value }}
+      </p>
+    </div>
+  
+    <div>
+      <button (click)="callSvindli()">Svindli!</button>
+    </div>
+  </div>
+  <button mat-flat-button
+  color="accent"
+  (click)="backToMain()">Back</button>
+  

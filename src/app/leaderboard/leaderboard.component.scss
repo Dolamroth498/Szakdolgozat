@@ -1,0 +1,15 @@
+@import '../../styles.scss';
+
+.leaderboard-container {
+  padding: 20px;
+  text-align: center;
+
+  h2 {
+    color: $primary-color;
+  }
+
+  .item {
+    @include button-style($secondary-color);
+    margin: 15px;
+  }
+}

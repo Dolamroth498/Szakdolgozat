@@ -1,0 +1,21 @@
+// Global variables
+$primary-color: #007bff;
+$secondary-color: #6c757d;
+$font-family: 'Arial, sans-serif';
+
+// Mixin for button styles
+@mixin button-style($bg-color) {
+  background-color: $bg-color;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+
+  &:hover {
+    background-color: darken($bg-color, 10%);
+  }
+}
+
+// Import this file in your components' SCSS if needed

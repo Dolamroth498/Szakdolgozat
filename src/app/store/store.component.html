@@ -1,0 +1,17 @@
+<div class="store">
+    <h2>Bolt</h2>
+    <p>Jelenlegi egyenleged: {{ userBalance }} Ft</p>
+  
+    <div class="item-list">
+      <div class="item" *ngFor="let item of items">
+        <img [src]="item.image" alt="{{ item.name }}">
+        <p>{{ item.name }}</p>
+        <p>{{ item.price }} Ft</p>
+        <button (click)="buyItem(item)">Vásárlás</button>
+      </div>
+    </div>
+  </div>
+  <button mat-flat-button
+  color="accent"
+  (click)="backToMain()">Back</button>
+  
