@@ -1,25 +1,119 @@
 <div class="game">
-    <div class="player-hand" *ngFor="let player of gameState.players; let i = index">
-      <h3>{{ player.name }}</h3>
-      <div *ngIf="gameState.currentPlayerIndex === i">
-        <button *ngFor="let card of player.cards" (click)="playCard(card)">
-          {{ card.value }} {{ card.suit }}
-        </button>
-      </div>
-    </div>
-  
-    <div class="discard-pile">
-      <h4>Dobóhalom</h4>
-      <p *ngIf="gameState.discardPile.length > 0">
-        {{ gameState.discardPile[gameState.discardPile.length - 1].value }}
+
+  <h2>
+    Aktuális játékos:
+    {{ currentPlayer.name }}
+  </h2>
+
+  <div
+    class="player-hand"
+    *ngFor="let player of gameState.players; let i = index">
+
+    <h3>{{ player.name }}</h3>
+
+    <div *ngIf="gameState.currentPlayerIndex === i">
+
+      <p>
+        Következő lap:
+        <strong>{{ gameState.nextCardValue }}</strong>
       </p>
+
+      <button
+        *ngFor="let card of player.cards"
+        (click)="toggleCard(card)"
+        [class.selected]="isSelected(card)">
+
+        {{ card.value }}
+        {{ card.suit }}
+
+      </button>
+
     </div>
-  
-    <div>
-      <button (click)="callSvindli()">Svindli!</button>
-    </div>
+
   </div>
-  <button mat-flat-button
+
+  <hr>
+
+  <div class="selected-cards">
+
+    <h4>Kiválasztott lapok</h4>
+
+    <span *ngFor="let card of selectedCards">
+
+      {{ card.value }}
+      {{ card.suit }}
+
+    </span>
+
+  </div>
+
+  <hr>
+
+  <div class="declare">
+
+    <p>
+      Bemondott érték:
+      <strong>
+        {{ gameState.nextCardValue }}
+      </strong>
+    </p>
+
+  </div>
+
+  <br>
+
+  <button
+    (click)="playSelectedCards()">
+
+    Lapok lerakása
+
+  </button>
+
+  <button
+    (click)="callSvindli()">
+
+    Svindli!
+
+  </button>
+
+  <hr>
+
+  <div class="discard-pile">
+
+    <h4>Dobóhalom</h4>
+
+    <p>
+      Összes lap:
+      {{ gameState.discardPile.length }}
+    </p>
+
+  </div>
+
+  <hr>
+
+  <div *ngIf="gameState.gameFinished">
+
+    <h2>
+
+      Győztes:
+
+      {{
+        gameState.players.find(
+          p => p.id === gameState.winnerId
+        )?.name
+      }}
+
+    </h2>
+
+  </div>
+
+</div>
+
+<button
+  mat-flat-button
   color="accent"
-  (click)="backToMain()">Back</button>
-  
+  (click)="backToMain()">
+
+  Back
+
+</button>
