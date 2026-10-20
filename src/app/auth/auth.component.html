@@ -1,21 +1,22 @@
 <div *ngIf="action === 'register'">
     <h2>Regisztráció</h2>
-    <form (submit)="register()">
-      <input type="text" placeholder="Felhasználónév" [(ngModel)]="name" />
-      <input type="text" placeholder="Email Cím" [(ngModel)]="email" />
-      <input type="password" placeholder="Jelszó" [(ngModel)]="password" />
-      <button type="submit">Register</button>
+    <form (ngSubmit)="register()">
+      <input type="text" name="name" placeholder="Felhasználónév" [(ngModel)]="name" required />
+      <input type="email" name="email" placeholder="E-mail-cím" [(ngModel)]="email" required />
+      <input type="password" name="password" placeholder="Jelszó (legalább 6 karakter)" [(ngModel)]="password" minlength="6" required />
+      <button type="submit" [disabled]="isSubmitting">{{ isSubmitting ? 'Folyamatban...' : 'Regisztráció' }}</button>
     </form>
   </div>
   
   <div *ngIf="action === 'login'">
     <h2>Bejelentkezés</h2>
-    <form (submit)="login()">
-      <input type="text" placeholder="Felhasználónév" [(ngModel)]="name" />
-      <input type="password" placeholder="Jelszó" [(ngModel)]="password" />
-      <button type="submit">Login</button>
+    <form (ngSubmit)="login()">
+      <input type="email" name="email" placeholder="E-mail-cím" [(ngModel)]="email" required />
+      <input type="password" name="password" placeholder="Jelszó" [(ngModel)]="password" required />
+      <button type="submit" [disabled]="isSubmitting">{{ isSubmitting ? 'Folyamatban...' : 'Bejelentkezés' }}</button>
     </form>
   </div>
+  <p *ngIf="errorMessage" role="alert">{{ errorMessage }}</p>
   <button mat-flat-button
   color="accent"
   (click)="backToMain()">Back</button>

@@ -11,10 +11,10 @@ import { CommonModule } from '@angular/common';
   styleUrls: ['./main.component.scss']
 })
 export class MainComponent {
-  constructor(private authService: AuthService, private router: Router) {}
+  readonly user$: AuthService['user$'];
 
-  get isLoggedIn() {
-    return this.authService.isLoggedIn();
+  constructor(private readonly authService: AuthService, private readonly router: Router) {
+    this.user$ = this.authService.user$;
   }
 
   startGame(opponent: string) {
@@ -33,8 +33,13 @@ export class MainComponent {
     this.router.navigateByUrl('user');
   }
 
-  logout() {
-    this.authService.logout();
-    this.router.navigate(['/']);
+  async logout(): Promise<void> {
+    try {
+      await this.authService.logout();
+      await this.router.navigateByUrl('/main');
+    } catch (error) {
+      console.error('Firebase sign-out failed.', error);
+      alert('A kijelentkezés nem sikerült. Próbáld újra.');
+    }
   }
 }

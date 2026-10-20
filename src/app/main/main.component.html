@@ -7,11 +7,11 @@
       <button (click)="goLeaderboard()">Rangsor menézése</button>
       <button (click)="goUser()">Profil megtekintése</button>
     </div>
-    <div *ngIf="!isLoggedIn" class="auth">
+    <div *ngIf="!(user$ | async)" class="auth">
       <button routerLink="/auth/register">Regisztráció</button>
       <button routerLink="/auth/login">Bejelentkezés</button>
     </div>
-    <div *ngIf="isLoggedIn" class="auth">
+    <div *ngIf="user$ | async" class="auth">
       <button (click)="logout()">Kijelentkezés</button>
     </div>
     <router-outlet></router-outlet>

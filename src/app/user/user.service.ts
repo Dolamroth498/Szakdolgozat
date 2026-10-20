@@ -1,102 +1,86 @@
-import { Injectable } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { inject, Injectable, PLATFORM_ID } from '@angular/core';
+import { User as FirebaseUser } from '@angular/fire/auth';
+import { Firestore, doc, getDoc, serverTimestamp, setDoc } from '@angular/fire/firestore';
+import { BehaviorSubject, catchError, defer, finalize, of, switchMap, tap } from 'rxjs';
+import { AuthService } from '../auth/auth.service';
 import { User } from './user.model';
-import { BehaviorSubject, forkJoin, Observable, switchMap, tap } from 'rxjs';
-import { SaveUserService } from '../saveuser.service';
-import { OfflineUserService } from '../offline-user.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class UserService {
-  /*constructor(private readonly saveUserService: SaveUserService, private readonly offlineUserService: OfflineUserService) {}
+  private readonly firestore = isPlatformBrowser(inject(PLATFORM_ID)) ? inject(Firestore) : null;
 
-  public saveNewUser(id: string, name: string, email: string, password: string, balance: number, backgrounds: string[], cardBacks: string[], leaderboardPosition: number, points: number){
-    
-  }
+  private readonly userSubject = new BehaviorSubject<User | null>(null);
+  readonly currentUser$ = this.userSubject.asObservable();
 
-  public saveUser(user: User): Observable<any> {
-    if (navigator.onLine) {
-      return this.saveUserService.saveUser(user);
-    } else {
-      return this.offlineUserService.saveUser(user);
-    }
-  }*/
-  
-  // A felhasználó adatainak tárolása
-  private userSubject = new BehaviorSubject<User>({
-    id: 'user123',
-    name: 'John Doe',
-    email: 'johndoe@example.com',
-    password: 'hashedpassword123', // Jelszót mindig hash-eld!
-    balance: 100, // Kezdő egyenleg
-    backgrounds: [], // Vásárolt háttér képek
-    cardBacks: [], // Vásárolt kártya hátlapok
-    leaderboardPosition: 1, // Kezdő ranglista hely
-    points: 0, // Kezdő pontszám
-  });
+  private readonly loadingSubject = new BehaviorSubject(true);
+  readonly loading$ = this.loadingSubject.asObservable();
 
-  // A felhasználó adatai megfigyelhetők egy Observable segítségével
-  currentUser$ = this.userSubject.asObservable();
+  private readonly errorSubject = new BehaviorSubject<string | null>(null);
+  readonly error$ = this.errorSubject.asObservable();
 
-  // Felhasználó adatainak frissítése
-  updateUser(user: User) {
-    this.userSubject.next(user); // Új felhasználói adatok beállítása
-  }
-
-  // Vásárlás végrehajtása
-  buyItem(item: string, type: 'background' | 'cardBack', price: number) {
-    const user = this.userSubject.value;
-
-    if (user.balance >= price) {
-      user.balance -= price; // Levonjuk a pénzt
-      if(type == 'background'){
-        user.backgrounds.push(item); // Hozzáadjuk a vásárolt elemet
-      } else{
-        user.cardBacks.push(item); // Hozzáadjuk a vásárolt elemet
-      }
-      
-      this.updateUser(user); // Frissítjük az adatokat
-      return true; // Vásárlás sikeres
-    } else {
-      return false; // Nincs elég pénz a vásárláshoz
-    }
-  }
-
-  // A felhasználó pontjainak frissítése
-  updatePoints(points: number) {
-    const user = this.userSubject.value;
-    user.points += points;
-    this.updateUser(user); // Frissítjük az adatokat
-  }
-
-  // Felhasználó rangjának frissítése
-  updateLeaderboardPosition(position: number) {
-    const user = this.userSubject.value;
-    user.leaderboardPosition = position;
-    this.updateUser(user); // Frissítjük az adatokat
-  }
-
-  /*private setupOfflineSync(): void {
-    window.addEventListener('online', () => {
-      this.syncUnsyncedUsers().subscribe(() => this.currentUser$);
-    });
-  }
-
-  private syncUnsyncedUsers(): Observable<any> {
-    return this.offlineUserService
-      .getUnsyncedUsers()
+  constructor(authService: AuthService) {
+    authService.user$
       .pipe(
-        switchMap((unsyncedUsers) =>
-          forkJoin(
-            unsyncedUsers.map((unsyncedUser) =>
-              this.saveUserService
-                .saveUser(unsyncedUser)
-                .pipe(
-                  tap(() => this.offlineUserService.updateUser(unsyncedUser))
-                )
-            )
-          )
-        )
-      );
-  }*/
+        tap(() => this.errorSubject.next(null)),
+        switchMap(authUser => {
+          if (!authUser) {
+            this.loadingSubject.next(false);
+            return of(null);
+          }
+
+          if (!this.firestore) {
+            this.loadingSubject.next(false);
+            return of(null);
+          }
+
+          this.loadingSubject.next(true);
+          const firestore = this.firestore;
+          return defer(() => this.loadOrCreateProfile(authUser, firestore)).pipe(
+            catchError(error => {
+              console.error('Failed to load the signed-in user profile.', error);
+              this.errorSubject.next('Nem sikerült betölteni a profilodat. Próbáld újra később.');
+              return of(null);
+            }),
+            finalize(() => this.loadingSubject.next(false))
+          );
+        })
+      )
+      .subscribe(user => this.userSubject.next(user));
+  }
+
+  private async loadOrCreateProfile(authUser: FirebaseUser, firestore: Firestore): Promise<User> {
+    const profileRef = doc(firestore, 'users', authUser.uid);
+    const profileSnapshot = await getDoc(profileRef);
+
+    if (profileSnapshot.exists()) {
+      const profile = profileSnapshot.data();
+      if (typeof profile['name'] !== 'string' || typeof profile['email'] !== 'string') {
+        throw new Error(`Invalid profile document for user ${authUser.uid}.`);
+      }
+
+      return {
+        id: authUser.uid,
+        name: profile['name'],
+        email: profile['email'],
+      };
+    }
+
+    const profile: User = {
+      id: authUser.uid,
+      name: authUser.displayName?.trim() || 'Játékos',
+      email: authUser.email ?? '',
+    };
+
+    await setDoc(profileRef, {
+      name: profile.name,
+      email: profile.email,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+
+    return profile;
+  }
 }

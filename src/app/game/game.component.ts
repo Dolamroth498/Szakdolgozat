@@ -69,6 +69,12 @@ export class GameComponent {
     ];
   }
 
+  get winnerName(): string | undefined {
+    return this.gameState.players.find(
+      player => player.id === this.gameState.winnerId
+    )?.name;
+  }
+
   toggleCard(card: Card): void {
 
     const index =
