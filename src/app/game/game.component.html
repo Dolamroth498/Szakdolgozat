@@ -1,33 +1,83 @@
-<div class="game">
+<div class="game" [ngClass]="gameTableClass" *ngIf="!showGameSetup">
+
+  <p *ngIf="persistenceError" role="alert">
+    {{ persistenceError }}
+  </p>
 
   <h2>
     Aktuális játékos:
     {{ currentPlayer.name }}
   </h2>
 
+  <p class="game-countdown" role="timer" aria-live="off">
+    Hátralévő játékidő: <strong>{{ formatTime(gameSecondsRemaining) }}</strong>
+  </p>
+
+  <p
+    *ngIf="
+      gameState.pendingWinnerId &&
+      !gameState.gameFinished &&
+      gameState.revealDeadline === undefined
+    "
+    role="status">
+    A győztes kihirdetése előtt még
+    {{ challengeSecondsRemaining }} másodpercig lehet „Svindli!”-t mondani.
+    <span *ngIf="hasAiOpponents">
+      Egy véletlenszerű AI-ellenfél 5 másodperc után automatikusan kihívja az utolsó lapot.
+    </span>
+  </p>
+
+  <p *ngIf="gameState.revealDeadline !== undefined" role="status">
+    A felfordított lap még {{ challengeSecondsRemaining }} másodpercig látható.
+    Ezalatt nem lehet új lépést tenni.
+  </p>
+
   <div
     class="player-hand"
     *ngFor="let player of gameState.players; let i = index">
 
-    <h3>{{ player.name }}</h3>
+    <h3>{{ player.name }} – {{ player.cards.length }} lapja van</h3>
 
-    <div *ngIf="gameState.currentPlayerIndex === i">
-
-      <p>
-        Következő lap:
+    <div *ngIf="!player.isAI && gameState.currentPlayerIndex === i">
+      <p *ngIf="gameState.currentPlayerIndex === i && !gameState.pendingWinnerId && gameState.revealDeadline === undefined">
+        Te következel. Bemondás:
         <strong>{{ gameState.nextCardValue }}</strong>
       </p>
-
       <button
         *ngFor="let card of player.cards"
         (click)="toggleCard(card)"
+        [disabled]="gameState.gamePaused || gameState.currentPlayerIndex !== i || !!gameState.pendingWinnerId || gameState.revealDeadline !== undefined"
         [class.selected]="isSelected(card)">
-
         {{ card.value }}
         {{ card.suit }}
-
       </button>
+    </div>
 
+    <div
+      *ngIf="gameState?.gamePaused"
+      class="pause-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="paused-title"
+      aria-describedby="paused-description">
+      <section class="pause-dialog">
+        <h2 id="paused-title">A játék meg van állítva</h2>
+        <p id="paused-description">
+          Az időmérő és a játéklépések szünetelnek.
+        </p>
+        <button type="button" (click)="toggleGamePause()">
+          Játék folytatása
+        </button>
+      </section>
+    </div>
+
+    <div
+      *ngIf="player.isAI || gameState.currentPlayerIndex !== i || gameState.pendingWinnerId"
+      class="card-backs"
+      aria-label="A játékos lapjai hátlappal lefelé">
+      <span *ngFor="let card of player.cards" class="card-back" [ngClass]="gameCardBackClass" aria-label="Hátlap">
+        H
+      </span>
     </div>
 
   </div>
@@ -36,7 +86,7 @@
 
   <div class="selected-cards">
 
-    <h4>Kiválasztott lapok</h4>
+    <h4>Kiválasztott lap</h4>
 
     <span *ngFor="let card of selectedCards">
 
@@ -60,21 +110,34 @@
 
   </div>
 
+  <p *ngIf="challengeFeedback" role="status">
+    {{ challengeFeedback }}
+  </p>
+
   <br>
 
   <button
-    (click)="playSelectedCards()">
+    (click)="playSelectedCards()"
+    [disabled]="gameState.gamePaused || !!gameState.pendingWinnerId || gameState.revealDeadline !== undefined || gameState.gameFinished">
 
-    Lapok lerakása
-
-  </button>
-
-  <button
-    (click)="callSvindli()">
-
-    Svindli!
+    Lap lerakása
 
   </button>
+
+  <div *ngIf="gameState.lastMove && !gameState.gameFinished && gameState.revealDeadline === undefined">
+    <p *ngIf="(gameState.moveCount ?? 0) <= 1">
+      A parti első lapjára nem lehet „Svindli!”-t mondani.
+    </p>
+    <p *ngIf="(gameState.moveCount ?? 0) > 1">
+      Kiálthat „Svindli!”-t:
+    </p>
+    <button
+      *ngFor="let player of eligibleChallengers"
+      [disabled]="gameState.gamePaused"
+      (click)="callSvindli(player.id)">
+      {{ player.name }}: Svindli!
+    </button>
+  </div>
 
   <hr>
 
@@ -83,9 +146,23 @@
     <h4>Dobóhalom</h4>
 
     <p>
-      Összes lap:
-      {{ gameState.discardPile.length }}
+      Dobóhalom mérete:
+      {{ gameState.discardPile.length }} lap
     </p>
+
+    <div
+      *ngIf="gameState.lastMove"
+      class="last-played-card"
+      aria-label="Utolsó lerakott lap">
+      <h4>Utolsó lerakott lap</h4>
+      <div *ngIf="gameState.revealDeadline !== undefined; else hiddenLastCard">
+        {{ gameState.lastMove.cards[0].value }}
+        {{ gameState.lastMove.cards[0].suit }}
+      </div>
+      <ng-template #hiddenLastCard>
+        <div class="card-back" [ngClass]="gameCardBackClass" aria-label="Hátlap">H</div>
+      </ng-template>
+    </div>
 
   </div>
 
@@ -93,23 +170,85 @@
 
   <div *ngIf="gameState.gameFinished">
 
-    <h2>
-
-      Győztes:
-
-      {{ winnerName }}
-
+    <h2 *ngIf="gameState.isDraw || winnerNames.length > 1">
+      Döntetlen!
+      <span *ngIf="winnerNames.length">
+        A legkevesebb lapja: {{ winnerNames.join(', ') }}
+      </span>
     </h2>
+    <h2 *ngIf="!gameState.isDraw && winnerNames.length <= 1">
+      Győztes: {{ winnerNames[0] || winnerName || 'Nincs győztes' }}
+    </h2>
+
+    <p *ngIf="rewardMessage" role="status">{{ rewardMessage }}</p>
+    <p *ngIf="hasAiOpponents && gameState.profileId">
+      A gép elleni győzelemért 15 érme jár; a pontszámot a rangsor használja.
+    </p>
+    <p *ngIf="hasAiOpponents && !gameState.profileId">
+      A profiljutalomhoz a parti megkezdése előtt be kell jelentkezni.
+    </p>
+
+    <button (click)="openGameSetup()">
+      Új játék beállítása
+    </button>
 
   </div>
 
+  <button
+    *ngIf="!gameState.gameFinished"
+    (click)="openGameSetup()">
+    Új játék beállítása (jelenlegi parti elvetése)
+  </button>
+
 </div>
 
-<button
-  mat-flat-button
-  color="accent"
-  (click)="backToMain()">
+<div class="game-setup" *ngIf="showGameSetup">
+  <p *ngIf="persistenceError" role="alert">
+    {{ persistenceError }}
+  </p>
 
-  Back
+  <h2>Új játék beállítása</h2>
+  <p>Kivel szeretnél játszani?</p>
+  <button
+    type="button"
+    [class.selected]="gameMode === 'computer'"
+    [attr.aria-pressed]="gameMode === 'computer'"
+    (click)="selectGameMode('computer')">
+    Gép ellen
+  </button>
+  <button
+    type="button"
+    [class.selected]="gameMode === 'human'"
+    [attr.aria-pressed]="gameMode === 'human'"
+    (click)="selectGameMode('human')">
+    Emberek ellen
+  </button>
 
-</button>
+  <ng-container *ngIf="gameMode === 'computer'; else humanGameInfo">
+    <p>Hány AI-ellenféllel szeretnél játszani?</p>
+
+    <button
+      *ngFor="let count of [2, 3]"
+      type="button"
+      [class.selected]="aiOpponentCount === count"
+      [attr.aria-pressed]="aiOpponentCount === count"
+      (click)="selectAiOpponentCount(count)">
+      {{ count }} AI-ellenfél
+    </button>
+  </ng-container>
+  <ng-template #humanGameInfo>
+    <p>Helyi játék 4 emberi játékossal, felváltva egy eszközön.</p>
+    <p>A lapjaid csak a te körödben látszanak.</p>
+  </ng-template>
+
+  <p>A lapokat a választás után osztja ki a játék.</p>
+  <button type="button" (click)="startNewGame()">
+    Játék indítása
+  </button>
+  <button
+    *ngIf="gameState"
+    type="button"
+    (click)="cancelGameSetup()">
+    Vissza a jelenlegi játékhoz
+  </button>
+</div>

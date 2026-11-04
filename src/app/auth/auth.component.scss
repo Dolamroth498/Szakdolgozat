@@ -1,4 +1,4 @@
-@import '../../styles.scss';
+@use '../../theme' as *;
 
 .auth-container {
   padding: 20px;
@@ -9,7 +9,7 @@
   }
 
   .item {
-    @include button-style($secondary-color);
+    @include button-style($button-color);
     margin: 15px;
   }
 }

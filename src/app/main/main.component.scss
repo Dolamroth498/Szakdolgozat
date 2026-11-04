@@ -1,4 +1,4 @@
-@import '../../styles.scss';
+@use '../../theme' as *;
 
 .main-container {
   text-align: center;
@@ -11,14 +11,14 @@
 
   .actions {
     button {
-      @include button-style($primary-color);
+      @include button-style($button-color);
       margin: 10px;
     }
   }
 
   .auth {
     button {
-      @include button-style($primary-color);
+      @include button-style($button-color);
       margin: 10px;
     }
   }

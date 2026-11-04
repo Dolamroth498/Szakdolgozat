@@ -10,12 +10,28 @@ service cloud.firestore {
       return request.resource.data.keys().hasOnly([
           'name',
           'email',
+          'backgrounds',
+          'cardBacks',
+          'selectedBackground',
+          'selectedCardBack',
+          'coins',
+          'points',
+          'wins',
+          'draws',
+          'gamesPlayed',
           'createdAt',
           'updatedAt'
         ])
         && request.resource.data.keys().hasAll([
           'name',
           'email',
+          'backgrounds',
+          'cardBacks',
+          'coins',
+          'points',
+          'wins',
+          'draws',
+          'gamesPlayed',
           'createdAt',
           'updatedAt'
         ])
@@ -23,6 +39,19 @@ service cloud.firestore {
         && request.resource.data.name.size() > 0
         && request.resource.data.name.size() <= 50
         && request.resource.data.email == request.auth.token.email
+        && request.resource.data.backgrounds is list
+        && request.resource.data.backgrounds.size() == 0
+        && request.resource.data.cardBacks is list
+        && request.resource.data.cardBacks.size() == 0
+        && (!('selectedBackground' in request.resource.data)
+          || request.resource.data.selectedBackground == 'felt-green')
+        && (!('selectedCardBack' in request.resource.data)
+          || request.resource.data.selectedCardBack == 'back-red')
+        && request.resource.data.coins == 0
+        && request.resource.data.points == 0
+        && request.resource.data.wins == 0
+        && request.resource.data.draws == 0
+        && request.resource.data.gamesPlayed == 0
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
     }
@@ -34,6 +63,15 @@ service cloud.firestore {
       allow update: if isOwner(userId)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'name',
+          'backgrounds',
+          'cardBacks',
+          'selectedBackground',
+          'selectedCardBack',
+          'coins',
+          'points',
+          'wins',
+          'draws',
+          'gamesPlayed',
           'updatedAt'
         ])
         && request.resource.data.name is string
@@ -41,6 +79,64 @@ service cloud.firestore {
         && request.resource.data.name.size() <= 50
         && request.resource.data.email == resource.data.email
         && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.backgrounds is list
+        && request.resource.data.cardBacks is list
+        && (!('selectedBackground' in request.resource.data)
+          || request.resource.data.selectedBackground == 'felt-green'
+          || request.resource.data.backgrounds.hasAny([request.resource.data.selectedBackground]))
+        && (!('selectedCardBack' in request.resource.data)
+          || request.resource.data.selectedCardBack == 'back-red'
+          || request.resource.data.cardBacks.hasAny([request.resource.data.selectedCardBack]))
+        && request.resource.data.coins is int
+        && request.resource.data.coins >= 0
+        && request.resource.data.points is int
+        && request.resource.data.points >= 0
+        && request.resource.data.wins is int
+        && request.resource.data.wins >= 0
+        && request.resource.data.draws is int
+        && request.resource.data.draws >= 0
+        && request.resource.data.gamesPlayed is int
+        && request.resource.data.gamesPlayed >= 0
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+
+      match /completedGames/{gameId} {
+        allow get: if isOwner(userId);
+        allow list: if false;
+        allow create: if isOwner(userId)
+          && request.resource.data.keys().hasOnly(['outcome', 'mode', 'createdAt'])
+          && request.resource.data.outcome in ['win', 'loss', 'draw']
+          && request.resource.data.mode == 'computer'
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+    }
+
+    match /leaderboard/{userId} {
+      allow get, list: if true;
+      allow create, update: if isOwner(userId)
+        && request.resource.data.keys().hasOnly([
+          'name',
+          'points',
+          'wins',
+          'gamesPlayed',
+          'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'name',
+          'points',
+          'wins',
+          'gamesPlayed',
+          'updatedAt'
+        ])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.points is int
+        && request.resource.data.points >= 0
+        && request.resource.data.wins is int
+        && request.resource.data.wins >= 0
+        && request.resource.data.gamesPlayed is int
+        && request.resource.data.gamesPlayed >= 0
         && request.resource.data.updatedAt == request.time;
       allow delete: if false;
     }

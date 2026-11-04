@@ -1,25 +1,195 @@
-@import '../styles.scss';
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-bottom: 1px solid #d7dfd8;
+  background: #20372a;
+  color: #f8f5e9;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+}
 
-.main-container {
+.app-nav {
+  display: grid;
+  width: min(100%, 1200px);
+  min-height: 3.75rem;
+  margin: 0 auto;
+  padding: 0.5rem 1rem;
+  align-items: center;
+  gap: 1rem;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+
+.nav-brand-group {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.4rem;
+  grid-column: 1;
+}
+
+.nav-links {
+  grid-column: 2;
+  justify-content: center;
+}
+
+.nav-auth {
+  grid-column: 3;
+  justify-content: flex-end;
+}
+
+.brand,
+.nav-links a,
+.nav-auth a {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.brand {
+  color: #d5ad50;
+  font-size: 1.2rem;
+  white-space: nowrap;
+}
+
+.nav-links,
+.nav-auth {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.pause-button-slot {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: center;
+  visibility: hidden;
+}
+
+.pause-button-slot.visible {
+  visibility: visible;
+}
+
+.nav-links a,
+.nav-auth a {
+  color: #d5ad50;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.4rem;
+  background: #20372a;
+}
+
+.nav-links a:hover,
+.nav-auth a:hover {
+  outline: 2px solid #d5ad50;
+  outline-offset: 2px;
+}
+
+.game-locked .nav-links,
+.game-locked .nav-auth {
+  opacity: 0.55;
+}
+
+.game-locked .nav-links a,
+.game-locked .nav-auth a {
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.nav-links a.active,
+.nav-auth a.active {
+  box-shadow: inset 0 -2px #d5ad50;
+}
+
+.nav-links a:active,
+.nav-auth a:active {
+  background: #d5ad50;
+  color: #20372a;
+}
+
+.nav-auth button {
+  padding: 0.5rem 0.75rem;
+  border-color: #d5ad50;
+  background: #20372a;
+  color: #d5ad50;
+}
+
+.pause-game-button {
+  padding: 0.4rem 0.5rem;
+  border-color: #d5ad50;
+  background: #20372a;
+  color: #d5ad50;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.pause-game-button:not(:disabled):hover,
+.nav-auth button:not(:disabled):hover {
+  outline: 2px solid #d5ad50;
+  outline-offset: 2px;
+}
+
+.pause-game-button:not(:disabled):active,
+.nav-auth button:not(:disabled):active {
+  background: #d5ad50;
+  color: #20372a;
+}
+
+.navigation-notice {
+  margin: 0;
+  padding: 0.4rem 1rem;
+  background: #172a1e;
+  color: #f8f5e9;
   text-align: center;
-  margin-top: 50px;
+  font-size: 0.9rem;
+}
 
-  h1 {
-    font-size: 2em;
-    margin-bottom: 20px;
+.page-content {
+  min-height: calc(100vh - 3.75rem);
+}
+
+@media (max-width: 1100px) {
+  .app-nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.35rem 0.75rem;
   }
 
-  .actions {
-    button {
-      @include button-style($primary-color);
-      margin: 10px;
-    }
+  .nav-brand-group {
+    width: 100%;
+    justify-content: center;
   }
 
-  .auth {
-    button {
-      @include button-style($primary-color);
-      margin: 10px;
-    }
+  .pause-button-slot {
+    flex: 0 0 138px;
+  }
+
+  .nav-links {
+    order: 1;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 700px) {
+  .page-content {
+    min-height: calc(100vh - 6.5rem);
+  }
+}
+
+@media (max-width: 400px) {
+  .app-nav {
+    padding: 0.5rem;
+  }
+
+  .nav-links,
+  .nav-auth {
+    gap: 0.15rem;
+  }
+
+  .nav-links a,
+  .nav-auth a {
+    padding: 0.45rem;
+    font-size: 0.9rem;
   }
 }

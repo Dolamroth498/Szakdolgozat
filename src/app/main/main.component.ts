@@ -1,45 +1,42 @@
 import { Component } from '@angular/core';
-import { Router, RouterOutlet} from '@angular/router';
-import { AuthService } from '../auth/auth.service';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
+import { GameStateStorageService } from '../game/game-state-storage.service';
 
 @Component({
   selector: 'app-main',
   standalone: true,
-  imports: [CommonModule, RouterOutlet],
+  imports: [CommonModule],
   templateUrl: './main.component.html',
   styleUrls: ['./main.component.scss']
 })
 export class MainComponent {
-  readonly user$: AuthService['user$'];
+  isChoosingGameMode = false;
+  hasPausedGame = false;
+  storageError = '';
 
-  constructor(private readonly authService: AuthService, private readonly router: Router) {
-    this.user$ = this.authService.user$;
+  constructor(
+    private readonly router: Router,
+    gameStateStorage: GameStateStorageService
+  ) {
+    try {
+      this.hasPausedGame = gameStateStorage.load()?.gamePaused === true;
+    } catch (error) {
+      console.error('Nem sikerült betölteni a mentett játékállapotot.', error);
+      this.storageError =
+        'A mentett játékállapot nem tölthető be, ezért a parti nem folytatható.';
+    }
   }
 
-  startGame(opponent: string) {
+  showGameModeChoice(): void {
+    this.isChoosingGameMode = true;
+  }
+
+  startGame(opponent: 'computer' | 'human'): void {
     this.router.navigate(['/game'], { queryParams: { opponent } });
   }
 
-  public openStore(): void{
-    this.router.navigateByUrl('store');
-  }
-
-  public goLeaderboard(): void{
-    this.router.navigateByUrl('leaderboard');
-  }
-
-  public goUser(): void {
-    this.router.navigateByUrl('user');
-  }
-
-  async logout(): Promise<void> {
-    try {
-      await this.authService.logout();
-      await this.router.navigateByUrl('/main');
-    } catch (error) {
-      console.error('Firebase sign-out failed.', error);
-      alert('A kijelentkezés nem sikerült. Próbáld újra.');
-    }
+  resumeGame(): void {
+    this.router.navigate(['/game'], { queryParams: { resume: 'true' } });
   }
 }

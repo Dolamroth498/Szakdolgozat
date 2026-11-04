@@ -7,14 +7,20 @@ h2 {
   button {
     margin: 5px;
     padding: 10px;
-    background-color: #4caf50;
-    color: white;
+    background-color: #20372a;
+    color: #d5ad50;
     border: none;
     cursor: pointer;
   }
   
-  button:hover {
-    background-color: #45a049;
+  button:not(:disabled):hover {
+    outline: 2px solid #d5ad50;
+    outline-offset: 2px;
+  }
+
+  button:not(:disabled):active {
+    background-color: #d5ad50;
+    color: #20372a;
   }
   
   ul {

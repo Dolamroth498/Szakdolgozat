@@ -3,9 +3,26 @@
   <div *ngIf="user$ | async as user">
     <h2>{{ user.name }} - Profil</h2>
     <p>Email: {{ user.email }}</p>
-    <p>A játékbeli egyenleg és pontok mentése későbbi fejlesztés.</p>
+    <h3>Játékos statisztikák</h3>
+    <p>Érme: {{ user.coins }}</p>
+    <p>Pont: {{ user.points }}</p>
+    <p>Győzelem: {{ user.wins }}</p>
+    <p>Döntetlen: {{ user.draws }}</p>
+    <p>Lejátszott parti: {{ user.gamesPlayed }}</p>
+    <p>
+      Győzelmi arány:
+      {{ (user.gamesPlayed === 0 ? 0 : (user.wins / user.gamesPlayed * 100)) | number:'1.0-1' }}%
+    </p>
+    <h3>Háttérképek</h3>
+    <ul>
+      <li *ngFor="let background of user.backgrounds">{{ background }}</li>
+      <li *ngIf="user.backgrounds.length === 0">Még nincs feloldott háttérkép.</li>
+    </ul>
+    <h3>Kártyahátlapok</h3>
+    <ul>
+      <li *ngFor="let cardBack of user.cardBacks">{{ cardBack }}</li>
+      <li *ngIf="user.cardBacks.length === 0">Még nincs feloldott kártyahátlap.</li>
+    </ul>
+    <p>A kliensoldali MVP-ben a jutalmak a böngészőből kerülnek mentésre, ezért még manipulálhatók.</p>
   </div>
-  <button mat-flat-button
-    color="accent"
-    (click)="backToMain()">Back</button>
   

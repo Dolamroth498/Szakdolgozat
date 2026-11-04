@@ -3,13 +3,12 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../auth/auth.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatButtonModule } from '@angular/material/button';
 
 
 @Component({
   selector: 'app-auth',
   standalone: true,
-  imports: [CommonModule,FormsModule, MatButtonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './auth.component.html',
   styleUrls: ['./auth.component.scss'],
 })
@@ -103,9 +102,5 @@ export class AuthComponent implements OnInit {
       default:
         return `A hitelesítés nem sikerült (${code ?? 'ismeretlen hiba'}). Próbáld újra később.`;
     }
-  }
-
-  public backToMain(): void  {
-    this.router.navigateByUrl("main");
   }
 }

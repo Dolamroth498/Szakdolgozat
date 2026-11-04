@@ -8,11 +8,50 @@ export interface GameState {
 
   discardPile: Card[];
 
+  gameId?: string;
+
+  startedAt?: number;
+
+  gameDeadline?: number;
+
+  gamePaused?: boolean;
+
+  pausedAt?: number;
+
+  profileId?: string;
+
+  rewardProcessed?: boolean;
+
+  winnerIds?: string[];
+
+  isDraw?: boolean;
+
+  aiKnownDiscards?: {
+    playerId: string;
+    cards: Card[];
+  }[];
+
+  aiKnownDiscardCards?: Card[];
+
   currentPlayerIndex: number;
 
   nextCardValue: string;
 
+  moveCount?: number;
+
   lastMove?: Move;
+
+  pendingWinnerId?: string;
+
+  challengeDeadline?: number;
+
+  aiFinalChallengeDeadline?: number;
+
+  revealDeadline?: number;
+
+  pendingChallengerId?: string;
+
+  pendingBluffDetected?: boolean;
 
   gameFinished: boolean;
 

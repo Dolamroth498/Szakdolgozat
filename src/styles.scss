@@ -1,21 +1,116 @@
-// Global variables
-$primary-color: #007bff;
-$secondary-color: #6c757d;
-$font-family: 'Arial, sans-serif';
+@use './theme' as *;
 
-// Mixin for button styles
-@mixin button-style($bg-color) {
-  background-color: $bg-color;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
+:root {
+  color-scheme: light;
+  font-family: $font-family;
+  color: #1d2b22;
+  background: #f2f5f0;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 
-  &:hover {
-    background-color: darken($bg-color, 10%);
-  }
+  --color-primary: #{$primary-color};
+  --color-primary-hover: #1d5735;
+  --color-secondary: #{$secondary-color};
+  --color-surface: #ffffff;
+  --color-border: #d7dfd8;
+  --color-text: #1d2b22;
+  --color-muted: #59665d;
 }
 
-// Import this file in your components' SCSS if needed
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+  background: #f2f5f0;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: #f2f5f0;
+  color: #1d2b22;
+  font-family: $font-family;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+app-root {
+  display: block;
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  line-height: 1.2;
+}
+
+a {
+  color: $primary-color;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  padding: 0.65rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  background: $button-color;
+  color: $button-text-color;
+  cursor: pointer;
+  transition: background-color 140ms ease, color 140ms ease, outline-color 140ms ease;
+}
+
+button:not(:disabled):hover {
+  outline: 2px solid $button-text-color;
+  outline-offset: 2px;
+}
+
+button:not(:disabled):active {
+  background: $button-text-color;
+  color: $button-color;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 3px solid #d5ad50;
+  outline-offset: 2px;
+}
+
+input,
+select,
+textarea {
+  max-width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #aeb9b0;
+  border-radius: 0.4rem;
+  background: #fff;
+  color: #1d2b22;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid #d7dfd8;
+}

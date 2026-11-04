@@ -1,0 +1,25 @@
+$primary-color: #256d43;
+$secondary-color: #5f6b63;
+$button-color: #20372a;
+$button-text-color: #d5ad50;
+$font-family: 'Roboto', Arial, sans-serif;
+
+@mixin button-style($bg-color) {
+  background-color: $bg-color;
+  color: $button-text-color;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+
+  &:hover {
+    outline: 2px solid $button-text-color;
+    outline-offset: 2px;
+  }
+
+  &:active {
+    background-color: $button-text-color;
+    color: $bg-color;
+  }
+}

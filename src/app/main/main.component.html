@@ -1,18 +1,17 @@
 <div class="main-container">
-    <h1>Üdvözöllek a játékban!</h1>
-    <div class="actions">
-      <button (click)="startGame('computer')">Új játék gép ellen</button>
-      <button (click)="startGame('human')">Új játék emberek ellen</button>
-      <button (click)="openStore()">Bolt megnyitása</button>
-      <button (click)="goLeaderboard()">Rangsor menézése</button>
-      <button (click)="goUser()">Profil megtekintése</button>
-    </div>
-    <div *ngIf="!(user$ | async)" class="auth">
-      <button routerLink="/auth/register">Regisztráció</button>
-      <button routerLink="/auth/login">Bejelentkezés</button>
-    </div>
-    <div *ngIf="user$ | async" class="auth">
-      <button (click)="logout()">Kijelentkezés</button>
-    </div>
-    <router-outlet></router-outlet>
+  <h1>Üdvözöllek a játékban!</h1>
+  <p *ngIf="storageError" role="alert">{{ storageError }}</p>
+  <button *ngIf="hasPausedGame" type="button" (click)="resumeGame()">
+    Játék folytatása
+  </button>
+  <div class="actions">
+    <ng-container *ngIf="isChoosingGameMode; else newGame">
+      <p>Kivel szeretnél játszani?</p>
+      <button (click)="startGame('computer')">Gép ellen</button>
+      <button (click)="startGame('human')">Emberek ellen</button>
+    </ng-container>
+    <ng-template #newGame>
+      <button (click)="showGameModeChoice()">Új játék</button>
+    </ng-template>
   </div>
+</div>

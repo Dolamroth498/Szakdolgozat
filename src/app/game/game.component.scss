@@ -1,4 +1,4 @@
-@import '../../styles.scss';
+@use '../../theme' as *;
 
 .game-container {
   padding: 20px;
@@ -9,7 +9,81 @@
   }
 
   .item {
-    @include button-style($secondary-color);
+    @include button-style($button-color);
     margin: 15px;
+  }
+}
+
+.game-setup button.selected {
+  outline: 3px solid $button-text-color;
+  font-weight: bold;
+}
+
+.pause-overlay {
+  position: fixed;
+  z-index: 999;
+  top: 4.5rem;
+  right: 1rem;
+  pointer-events: none;
+}
+
+.pause-dialog {
+  pointer-events: auto;
+  width: min(100%, 24rem);
+  padding: 1.5rem;
+  border: 2px solid $button-text-color;
+  border-radius: 0.75rem;
+  background: #20372a;
+  color: #f8f5e9;
+  text-align: center;
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 35%);
+
+  h2 {
+    margin-top: 0;
+    color: $button-text-color;
+  }
+
+  p {
+    margin-bottom: 1.25rem;
+  }
+}
+
+.game.table-felt-green {
+  background: radial-gradient(ellipse, #3b8b57, #16472b);
+}
+
+.game.table-felt-blue {
+  background: radial-gradient(ellipse, #387a8d, #173b4c);
+}
+
+.game.table-felt-night {
+  background: radial-gradient(ellipse, #2c3942, #121a21);
+  color: #f3f0e8;
+}
+
+.card-back.cardback-back-red {
+  border-color: #ffd1d1;
+  background: repeating-linear-gradient(45deg, #7d1717, #7d1717 6px, #b52a2a 6px, #b52a2a 12px);
+}
+
+.card-back.cardback-back-classic {
+  border-color: #b6d6ff;
+  background: repeating-linear-gradient(45deg, #173d71, #173d71 6px, #2b5b95 6px, #2b5b95 12px);
+}
+
+.card-back.cardback-back-gold {
+  border-color: #ffe19a;
+  background: repeating-linear-gradient(45deg, #654710, #654710 6px, #a8791d 6px, #a8791d 12px);
+}
+
+@media (max-width: 700px) {
+  .pause-overlay {
+    top: 7rem;
+    right: 0.75rem;
+    left: 0.75rem;
+  }
+
+  .pause-dialog {
+    margin: 0 auto;
   }
 }

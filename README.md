@@ -44,6 +44,30 @@ To execute unit tests with the [Karma](https://karma-runner.github.io) test runn
 ng test
 ```
 
+## Testing Firestore security rules
+
+In a separate terminal, start the Firestore emulator for the application:
+
+```bash
+npm run emulator:firestore
+```
+
+It uses the `svindli-25ccf` project ID and listens on port 8080. While it runs, start the Angular app with `npm start`. Development mode connects Firestore to this emulator; emulator data is local and is not your production database.
+
+To run the rules tests with the emulator already running on port 8080, use:
+
+```bash
+npm run test:rules
+```
+
+To start the emulator for the test run and stop it afterward, use:
+
+```bash
+npm run test:rules:emulator
+```
+
+The rules test command starts its own emulator with the demo project ID `demo-svindli-rules`, does not access production Firestore, and stops the emulator afterward. The emulator requires Java 11 or later.
+
 ## Running end-to-end tests
 
 For end-to-end (e2e) testing, run:

@@ -1,1 +1,71 @@
-<router-outlet></router-outlet>
+<header class="app-header">
+  <nav
+    class="app-nav"
+    [class.game-locked]="gameNavigationLocked"
+    aria-label="Fő navigáció"
+    [attr.aria-describedby]="navigationStateError ? 'game-navigation-notice' : null">
+    <div class="nav-brand-group">
+      <span class="brand">Svindli</span>
+
+      <div
+        class="pause-button-slot"
+        [class.visible]="gameNavigationLocked && isGamePage">
+        <button
+          type="button"
+          class="pause-game-button"
+          [disabled]="!gameNavigationLocked || !isGamePage"
+          [attr.aria-hidden]="!gameNavigationLocked || !isGamePage"
+          (click)="pauseGame()">Játék megállítása</button>
+      </div>
+    </div>
+
+    <div class="nav-links">
+      <a routerLink="/main" routerLinkActive="active" ariaCurrentWhenActive="page"
+        [attr.aria-disabled]="gameNavigationLocked" [attr.tabindex]="gameNavigationLocked ? -1 : 0">Főoldal</a>
+      <a routerLink="/game" routerLinkActive="active" ariaCurrentWhenActive="page"
+        [attr.aria-disabled]="gameNavigationLocked" [attr.tabindex]="gameNavigationLocked ? -1 : 0">Játék</a>
+      <a routerLink="/leaderboard" routerLinkActive="active" ariaCurrentWhenActive="page"
+        [attr.aria-disabled]="gameNavigationLocked" [attr.tabindex]="gameNavigationLocked ? -1 : 0">Ranglista</a>
+      <a
+        *ngIf="user$ | async"
+        routerLink="/store"
+        routerLinkActive="active"
+        ariaCurrentWhenActive="page"
+        [attr.aria-disabled]="gameNavigationLocked"
+        [attr.tabindex]="gameNavigationLocked ? -1 : 0">Bolt</a>
+      <a
+        *ngIf="user$ | async"
+        routerLink="/user"
+        routerLinkActive="active"
+        ariaCurrentWhenActive="page"
+        [attr.aria-disabled]="gameNavigationLocked"
+        [attr.tabindex]="gameNavigationLocked ? -1 : 0">Profil</a>
+    </div>
+
+    <div class="nav-auth">
+      <ng-container *ngIf="user$ | async; else guestActions">
+        <button
+          type="button"
+          [disabled]="gameNavigationLocked"
+          (click)="logout()">Kijelentkezés</button>
+      </ng-container>
+      <ng-template #guestActions>
+        <a routerLink="/auth/login" routerLinkActive="active"
+          [attr.aria-disabled]="gameNavigationLocked" [attr.tabindex]="gameNavigationLocked ? -1 : 0">Bejelentkezés</a>
+        <a routerLink="/auth/register" routerLinkActive="active"
+          [attr.aria-disabled]="gameNavigationLocked" [attr.tabindex]="gameNavigationLocked ? -1 : 0">Regisztráció</a>
+      </ng-template>
+    </div>
+  </nav>
+  <p
+    *ngIf="navigationStateError"
+    id="game-navigation-notice"
+    class="navigation-notice"
+    role="status">
+    {{ navigationStateError }}
+  </p>
+</header>
+
+<div class="page-content">
+  <router-outlet></router-outlet>
+</div>
