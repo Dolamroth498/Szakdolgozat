@@ -101,12 +101,14 @@ export class UserService {
 
     if (profileSnapshot.exists()) {
       const profile = profileSnapshot.data();
-      const backgrounds = this.isStringArray(profile['backgrounds'])
+      const storedBackgrounds = this.isStringArray(profile['backgrounds'])
         ? profile['backgrounds']
         : [];
-      const cardBacks = this.isStringArray(profile['cardBacks'])
+      const storedCardBacks = this.isStringArray(profile['cardBacks'])
         ? profile['cardBacks']
         : [];
+      const backgrounds = [...new Set([DEFAULT_BACKGROUND_ID, ...storedBackgrounds])];
+      const cardBacks = [...new Set([DEFAULT_CARD_BACK_ID, ...storedCardBacks])];
       const selectedBackground = this.getSelectedStoreItemId(
         profile['selectedBackground'],
         'background',
@@ -145,11 +147,15 @@ export class UserService {
 
       if (
         missingStats.length > 0 ||
+        JSON.stringify(profile['backgrounds']) !== JSON.stringify(backgrounds) ||
+        JSON.stringify(profile['cardBacks']) !== JSON.stringify(cardBacks) ||
         profile['selectedBackground'] !== selectedBackground ||
         profile['selectedCardBack'] !== selectedCardBack
       ) {
         await updateDoc(profileRef, {
           ...Object.fromEntries(missingStats.map(field => [field, 0])),
+          backgrounds,
+          cardBacks,
           selectedBackground,
           selectedCardBack,
           updatedAt: serverTimestamp(),
@@ -178,8 +184,8 @@ export class UserService {
       id: authUser.uid,
       name: authUser.displayName?.trim() || 'Játékos',
       email: authUser.email ?? '',
-      backgrounds: [],
-      cardBacks: [],
+      backgrounds: [DEFAULT_BACKGROUND_ID],
+      cardBacks: [DEFAULT_CARD_BACK_ID],
       selectedBackground: DEFAULT_BACKGROUND_ID,
       selectedCardBack: DEFAULT_CARD_BACK_ID,
       coins: 0,
@@ -214,6 +220,15 @@ export class UserService {
     gameId: string,
     outcome: 'win' | 'loss' | 'draw'
   ): Promise<boolean> {
+    return this.recordGameResult(userId, gameId, outcome, 'computer');
+  }
+
+  async recordGameResult(
+    userId: string,
+    gameId: string,
+    outcome: 'win' | 'loss' | 'draw',
+    mode: 'computer' | 'human'
+  ): Promise<boolean> {
     if (!this.firestore) {
       throw new Error('Firestore is unavailable outside the browser.');
     }
@@ -238,14 +253,15 @@ export class UserService {
       const profile = profileSnapshot.data();
       const won = outcome === 'win';
       const draw = outcome === 'draw';
-      const coins = this.statOrZero(profile['coins']) + (won ? 15 : 0);
+      const coinReward = mode === 'computer' && won ? 15 : 0;
+      const coins = this.statOrZero(profile['coins']) + coinReward;
       const points = this.statOrZero(profile['points']);
       const wins = this.statOrZero(profile['wins']) + (won ? 1 : 0);
       const draws = this.statOrZero(profile['draws']) + (draw ? 1 : 0);
       const gamesPlayed = this.statOrZero(profile['gamesPlayed']) + 1;
 
       transaction.update(profileRef, {
-        coins: increment(won ? 15 : 0),
+        coins: increment(coinReward),
         points: increment(0),
         wins: increment(won ? 1 : 0),
         draws: increment(draw ? 1 : 0),
@@ -254,7 +270,7 @@ export class UserService {
       });
       transaction.set(resultRef, {
         outcome,
-        mode: 'computer',
+        mode,
         createdAt: serverTimestamp(),
       });
       transaction.set(leaderboardRef, {

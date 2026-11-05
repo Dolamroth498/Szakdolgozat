@@ -68,6 +68,9 @@ export class GameService {
       aiKnownDiscards: [],
       currentPlayerIndex: 0,
       nextCardValue: this.values[0],
+      roundsStarted: 1,
+      successfulBluffCount: 0,
+      successfulSvindliCount: 0,
       moveCount: 0,
       gameFinished: false,
     };
@@ -107,6 +110,8 @@ export class GameService {
       return false;
     }
 
+    this.countUnchallengedBluff(gameState);
+
     const playedCards = [...cards];
     for (const card of playedCards) {
       player.cards.splice(player.cards.indexOf(card), 1);
@@ -143,7 +148,7 @@ export class GameService {
       return true;
     }
 
-    gameState.nextCardValue = this.getNextValue(declaredValue);
+    this.advanceCardValue(gameState, declaredValue);
     this.nextTurn(gameState);
 
     return true;
@@ -228,6 +233,8 @@ export class GameService {
     const bluffDetected = gameState.pendingBluffDetected;
 
     if (bluffDetected) {
+      gameState.successfulSvindliCount =
+        (gameState.successfulSvindliCount ?? 0) + 1;
       offender.cards.push(...gameState.discardPile);
       gameState.discardPile = [];
       gameState.aiKnownDiscards = [];
@@ -250,9 +257,11 @@ export class GameService {
     }
 
     gameState.lastMove = undefined;
-    gameState.nextCardValue = bluffDetected
-      ? lastMove.declaredValue
-      : this.getNextValue(lastMove.declaredValue);
+    if (bluffDetected) {
+      gameState.nextCardValue = lastMove.declaredValue;
+    } else {
+      this.advanceCardValue(gameState, lastMove.declaredValue);
+    }
     gameState.pendingChallengerId = undefined;
     gameState.pendingBluffDetected = undefined;
     gameState.revealDeadline = undefined;
@@ -282,6 +291,7 @@ export class GameService {
     gameState.winnerId = gameState.pendingWinnerId;
     gameState.winnerIds = [gameState.pendingWinnerId];
     gameState.isDraw = false;
+    this.countUnchallengedBluff(gameState);
     gameState.pendingWinnerId = undefined;
     gameState.challengeDeadline = undefined;
     gameState.aiFinalChallengeDeadline = undefined;
@@ -309,6 +319,12 @@ export class GameService {
     gameState.winnerIds = winners.map(player => player.id);
     gameState.isDraw = winners.length > 1;
     gameState.winnerId = winners.length === 1 ? winners[0].id : undefined;
+    if (
+      gameState.pendingWinnerId === undefined &&
+      gameState.pendingChallengerId === undefined
+    ) {
+      this.countUnchallengedBluff(gameState);
+    }
     gameState.pendingWinnerId = undefined;
     gameState.challengeDeadline = undefined;
     gameState.aiFinalChallengeDeadline = undefined;
@@ -334,5 +350,24 @@ export class GameService {
     }
 
     return this.values[(index + 1) % this.values.length];
+  }
+
+  private advanceCardValue(gameState: GameState, currentValue: string): void {
+    gameState.nextCardValue = this.getNextValue(currentValue);
+    if (gameState.nextCardValue === this.values[0] && !gameState.gameFinished) {
+      gameState.roundsStarted = (gameState.roundsStarted ?? 1) + 1;
+    }
+  }
+
+  private countUnchallengedBluff(gameState: GameState): void {
+    const lastMove = gameState.lastMove;
+    if (
+      lastMove &&
+      !gameState.pendingChallengerId &&
+      lastMove.cards.some(card => card.value !== lastMove.declaredValue)
+    ) {
+      gameState.successfulBluffCount =
+        (gameState.successfulBluffCount ?? 0) + 1;
+    }
   }
 }

@@ -4,6 +4,7 @@ export interface StoreItem {
   id: string;
   name: string;
   description: string;
+  creator?: string;
   category: StoreCategory;
   price: number;
   previewClass: string;
@@ -23,8 +24,9 @@ export const STORE_ITEMS: StoreItem[] = [
   },
   {
     id: DEFAULT_CARD_BACK_ID,
-    name: 'Klasszikus piros hátlap',
-    description: 'Alapértelmezett piros hátlap a rejtett lapokhoz.',
+    name: 'Sötétkék mintás hátlap',
+    description: 'Alapértelmezett, geometrikus mintájú hátlap a rejtett lapokhoz.',
+    creator: 'designed by Freepik - Magnific.com',
     category: 'cardBack',
     price: 0,
     previewClass: 'preview-back-red',
@@ -46,19 +48,30 @@ export const STORE_ITEMS: StoreItem[] = [
     previewClass: 'preview-felt-night',
   },
   {
-    id: 'back-classic',
-    name: 'Klasszikus kék',
-    description: 'Kék mintás hátlap a rejtett lapokhoz.',
+    id: 'back-green',
+    name: 'Zöld geometrikus',
+    description: 'Zöld, geometrikus mintájú hátlap a rejtett lapokhoz.',
+    creator: 'designed by Freepik - Magnific.com',
     category: 'cardBack',
-    price: 15,
+    price: 10,
+    previewClass: 'preview-back-green',
+  },
+  {
+    id: 'back-classic',
+    name: 'Kék virágmintás',
+    description: 'Világoskék, virágmintás hátlap a rejtett lapokhoz.',
+    creator: 'designed by Freepik - Magnific.com',
+    category: 'cardBack',
+    price: 10,
     previewClass: 'preview-back-classic',
   },
   {
     id: 'back-gold',
-    name: 'Arany díszítés',
-    description: 'Arany tónusú hátlap különleges mintával.',
+    name: 'Piros csillagmintás',
+    description: 'Piros, csillagmintás hátlap a rejtett lapokhoz.',
+    creator: 'designed by Freepik - Magnific.com',
     category: 'cardBack',
-    price: 30,
+    price: 10,
     previewClass: 'preview-back-gold',
   },
 ];

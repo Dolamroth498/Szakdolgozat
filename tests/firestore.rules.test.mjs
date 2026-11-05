@@ -24,8 +24,8 @@ let testEnvironment;
 const profile = email => ({
   name: 'Test Player',
   email,
-  backgrounds: [],
-  cardBacks: [],
+  backgrounds: ['felt-green'],
+  cardBacks: ['back-red'],
   coins: 0,
   points: 0,
   wins: 0,

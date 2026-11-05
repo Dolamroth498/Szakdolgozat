@@ -18,6 +18,10 @@ export interface GameState {
 
   pausedAt?: number;
 
+  localTurnLockedAt?: number;
+
+  challengeRevealStartedAt?: number;
+
   profileId?: string;
 
   rewardProcessed?: boolean;
@@ -36,6 +40,12 @@ export interface GameState {
   currentPlayerIndex: number;
 
   nextCardValue: string;
+
+  roundsStarted?: number;
+
+  successfulBluffCount?: number;
+
+  successfulSvindliCount?: number;
 
   moveCount?: number;
 

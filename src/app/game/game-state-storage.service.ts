@@ -75,6 +75,13 @@ export class GameStateStorageService {
     }
   }
 
+  clear(): void {
+    if (this.isBrowser) {
+      window.localStorage.removeItem(this.storageKey);
+    }
+    this.gameStateSubject.next(null);
+  }
+
   private isGameState(value: unknown): value is GameState {
     if (typeof value !== 'object' || value === null) {
       return false;
@@ -107,6 +114,10 @@ export class GameStateStorageService {
       (state.gameDeadline === undefined || typeof state.gameDeadline === 'number') &&
       (state.gamePaused === undefined || typeof state.gamePaused === 'boolean') &&
       (state.pausedAt === undefined || typeof state.pausedAt === 'number') &&
+      (state.localTurnLockedAt === undefined ||
+        typeof state.localTurnLockedAt === 'number') &&
+      (state.challengeRevealStartedAt === undefined ||
+        typeof state.challengeRevealStartedAt === 'number') &&
       (state.gamePaused === true) === (state.pausedAt !== undefined) &&
       (state.profileId === undefined || typeof state.profileId === 'string') &&
       (state.rewardProcessed === undefined ||
@@ -138,6 +149,14 @@ export class GameStateStorageService {
       state.currentPlayerIndex! >= 0 &&
       state.currentPlayerIndex! < state.players.length &&
       typeof state.nextCardValue === 'string' &&
+      (state.roundsStarted === undefined ||
+        (Number.isInteger(state.roundsStarted) && state.roundsStarted >= 1)) &&
+      (state.successfulBluffCount === undefined ||
+        (Number.isInteger(state.successfulBluffCount) &&
+          state.successfulBluffCount >= 0)) &&
+      (state.successfulSvindliCount === undefined ||
+        (Number.isInteger(state.successfulSvindliCount) &&
+          state.successfulSvindliCount >= 0)) &&
       (state.moveCount === undefined ||
         (Number.isInteger(state.moveCount) && state.moveCount >= 0)) &&
       (state.pendingWinnerId === undefined ||

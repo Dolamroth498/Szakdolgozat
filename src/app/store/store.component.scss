@@ -67,11 +67,12 @@
 
 .item-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: 1rem;
 }
 
 .item-card {
+  min-width: 0;
   align-items: stretch;
   overflow: hidden;
   border: 1px solid #53695a;
@@ -79,9 +80,70 @@
   background: #20372a;
 }
 
+.item-card.card-back-item {
+  display: block;
+}
+
+.card-back-item-content {
+  display: flex;
+  min-width: 0;
+  height: 100%;
+  padding: 1rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  text-align: center;
+}
+
+.card-back-item-content h2 {
+  width: 100%;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.card-back-item .preview {
+  width: 100%;
+  min-height: 150px;
+  flex: 1 0 150px;
+  margin: 0;
+}
+
+.card-back-item-footer {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.card-back-item-footer .price {
+  margin: 0;
+  text-align: left;
+}
+
+.card-back-item-action {
+  display: flex;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.card-back-item-action button {
+  max-width: 100%;
+}
+
+.item-creator {
+  width: 100%;
+  margin: auto 0 0;
+  color: #b7e5c1;
+  font-size: 0.85rem;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
 .preview {
   display: grid;
   flex: 0 0 38%;
+  min-width: 0;
   min-height: 170px;
   place-items: center;
   font-size: 2rem;
@@ -102,28 +164,53 @@
 
 .preview-back-classic,
 .preview-back-red,
+.preview-back-green,
 .preview-back-gold {
   margin: 1rem;
   min-height: 140px;
-  border: 5px double #f4e9cf;
-  border-radius: 0.6rem;
-  color: white;
-  background: repeating-linear-gradient(45deg, #173d71, #173d71 8px, #2b5b95 8px, #2b5b95 16px);
+  border: 0;
+  background: transparent;
 }
 
-.preview-back-red {
-  color: #ffe3e3;
-  background: repeating-linear-gradient(45deg, #7d1717, #7d1717 8px, #b52a2a 8px, #b52a2a 16px);
+.preview-back-classic span,
+.preview-back-red span,
+.preview-back-green span,
+.preview-back-gold span {
+  display: block;
+  width: 4.1rem;
+  height: 5.7rem;
+  border: 1px solid #8e98c7;
+  border-radius: 0.4rem;
+  background-image: url('/cardbacks/hatlap1.jpg');
+  background-repeat: no-repeat;
+  background-size: 344.8% 247%;
+  font-size: 0;
 }
 
-.preview-back-gold {
-  color: #fff0bd;
-  background: repeating-linear-gradient(45deg, #654710, #654710 8px, #a8791d 8px, #a8791d 16px);
+.preview-back-red span {
+  background-position: 23.9% 13.2%;
+}
+
+.preview-back-green span {
+  border-color: #00c081;
+  background-position: 76.2% 13.2%;
+}
+
+.preview-back-classic span {
+  border-color: #b6d6ff;
+  background-position: 23.9% 86.9%;
+}
+
+.preview-back-gold span {
+  border-color: #ff3753;
+  background-position: 76.2% 86.9%;
 }
 
 .item-details {
+  min-width: 0;
   flex: 1;
   padding: 1rem;
+  overflow-wrap: anywhere;
 }
 
 .price {
@@ -133,12 +220,14 @@
 }
 
 .item-details button {
+  max-width: 100%;
   padding: 0.6rem 0.9rem;
   border: 0;
   border-radius: 0.5rem;
   background: #20372a;
   color: #d5ad50;
   font-weight: 700;
+  white-space: normal;
   cursor: pointer;
 }
 

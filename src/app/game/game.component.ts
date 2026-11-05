@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { DestroyRef, Inject, OnDestroy, PLATFORM_ID } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
@@ -12,11 +13,17 @@ import { Card } from './card.model';
 import { GameStateStorageService } from './game-state-storage.service';
 import { AiService } from './ai.service';
 import { UserService } from '../user/user.service';
+import { LocalPlayerPinService } from './local-player-pin.service';
+
+interface LocalLobbyPlayer {
+  name: string;
+  pin: string;
+}
 
 @Component({
   selector: 'app-game',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './game.component.html',
   styleUrls: ['./game.component.scss']
 })
@@ -28,11 +35,37 @@ export class GameComponent implements OnDestroy, GameExitGuard {
 
   aiOpponentCount = 2;
 
+  humanPlayerCount = 3;
+
   gameMode: 'computer' | 'human' = 'computer';
 
   showGameSetup = false;
 
-  challengeFeedback = '';
+  localLobbyPhase: 'count' | 'credentials' = 'count';
+
+  localLobbyPlayerIndex = 0;
+
+  localLobbyPlayerName = '';
+
+  localLobbyPlayerPin = '';
+
+  localLobbyError = '';
+
+  private localLobbyProfileId?: string;
+
+  private localLobbyProfileName = '';
+
+  turnPinInput = '';
+
+  turnPinError = '';
+
+  unlockedPlayerId?: string;
+
+  private localLobbyPlayers: LocalLobbyPlayer[] = [];
+
+  challengeResultMessage = '';
+
+  private challengeResultShownAt?: number;
 
   persistenceError = '';
 
@@ -55,6 +88,7 @@ export class GameComponent implements OnDestroy, GameExitGuard {
     private gameControl: GameControlService,
     private aiService: AiService,
     private gameStateStorage: GameStateStorageService,
+    private localPlayerPinService: LocalPlayerPinService,
     private userService: UserService,
     private route: ActivatedRoute,
     @Inject(PLATFORM_ID) platformId: object,
@@ -64,9 +98,12 @@ export class GameComponent implements OnDestroy, GameExitGuard {
     this.gameControl.pauseRequested$
       .pipe(takeUntilDestroyed(destroyRef))
       .subscribe(() => this.toggleGamePause());
+    const shouldOpenSetup =
+      this.route.snapshot.queryParamMap.get('setup') === 'true';
     const shouldResumeGame =
       this.route.snapshot.queryParamMap.get('resume') === 'true';
     const requestedMode = this.route.snapshot.queryParamMap.get('opponent');
+    this.showGameSetup = shouldOpenSetup;
     if (requestedMode === 'human' || requestedMode === 'computer') {
       this.gameMode = requestedMode;
       this.showGameSetup = true;
@@ -76,6 +113,10 @@ export class GameComponent implements OnDestroy, GameExitGuard {
       const savedState = this.gameStateStorage.load();
       if (savedState) {
         this.gameState = savedState;
+        this.lockCurrentLocalTurn();
+        if (!this.gameState.gameFinished && !this.gameState.gamePaused) {
+          this.showGameSetup = false;
+        }
         this.ensureGameMetadata();
         if (this.gameState.gamePaused) {
           this.updateGameCountdown();
@@ -123,6 +164,65 @@ export class GameComponent implements OnDestroy, GameExitGuard {
       .filter((name): name is string => name !== undefined);
   }
 
+  playerPosition(index: number): string {
+    const humanIndex = this.gameState.players.findIndex(player => !player.isAI);
+    const playerIndex = this.isLocalHumanGame
+      ? this.gameState.currentPlayerIndex
+      : humanIndex === -1 ? 0 : humanIndex;
+    const relativeIndex =
+      (index - playerIndex + this.gameState.players.length) %
+      this.gameState.players.length;
+    if (relativeIndex === 0) {
+      return 'player-bottom';
+    }
+
+    if (this.gameState.players.length === 3) {
+      return relativeIndex === 1 ? 'player-top-left' : 'player-top-right';
+    }
+
+    if (relativeIndex === 1) {
+      return 'player-left';
+    }
+    if (relativeIndex === 2) {
+      return 'player-top';
+    }
+    return 'player-right';
+  }
+
+  handWidth(cardCount: number): string {
+    const widthRem = Math.max(12, Math.min(80, cardCount * 2.35 + 2.6));
+    return `${Number(widthRem.toFixed(2))}rem`;
+  }
+
+  cardSpritePosition(card: Card): string {
+    const columnByValue: Record<string, number> = {
+      ász: 0,
+      király: 1,
+      felső: 2,
+      alsó: 3,
+      X: 4,
+      IX: 5,
+      VIII: 6,
+      VII: 7,
+    };
+    const rowBySuit: Record<string, number> = {
+      makk: 0,
+      zöld: 1,
+      piros: 2,
+      tök: 3,
+    };
+    const columnPositions = [12.2, 23, 33.8, 44.6, 55.4, 66.2, 77, 87.8];
+    const rowPositions = [2, 34, 66, 98];
+    const column = columnByValue[card.value];
+    const row = rowBySuit[card.suit];
+
+    if (column === undefined || row === undefined) {
+      throw new RangeError(`Ismeretlen kártya a sprite-ban: ${card.value} ${card.suit}`);
+    }
+
+    return `${columnPositions[column]}% ${rowPositions[row]}%`;
+  }
+
   get hasAiOpponents(): boolean {
     return this.gameState.players.some(player => player.isAI);
   }
@@ -137,23 +237,70 @@ export class GameComponent implements OnDestroy, GameExitGuard {
     return cardBack ? `cardback-${cardBack}` : '';
   }
 
-  get eligibleChallengers() {
-    const lastPlayerId = this.gameState.lastMove?.playerId;
-    if (
-      (this.gameState.moveCount ?? 0) <= 1 ||
-      this.gameState.revealDeadline !== undefined ||
-      this.gameState.gamePaused
-    ) {
-      return [];
+  get canHumanPlayerChallenge(): boolean {
+    const lastMove = this.gameState.lastMove;
+    const humanPlayer = this.gameState.players.find(player => !player.isAI);
+    if (!lastMove || !humanPlayer) {
+      return false;
     }
 
-    return this.gameState.players.filter(
-      player => player.id !== lastPlayerId && !player.isAI
-    );
+    const canChallengeDuringTurn = this.isLocalHumanGame
+      ? this.unlockedPlayerId === this.currentPlayer.id &&
+        !this.currentPlayer.isAI &&
+        this.currentPlayer.id !== lastMove.playerId
+      : humanPlayer.id !== lastMove.playerId;
+
+    return canChallengeDuringTurn &&
+      (this.gameState.moveCount ?? 0) > 1 &&
+      this.gameState.revealDeadline === undefined &&
+      !this.gameState.gamePaused &&
+      !this.gameState.gameFinished;
+  }
+
+  get humanPlayerId(): string {
+    return this.gameState.players.find(player => !player.isAI)?.id ?? '';
+  }
+
+  get isLocalHumanGame(): boolean {
+    return !!this.gameState &&
+      this.gameState.players.length > 1 &&
+      this.gameState.players.every(player => !player.isAI);
+  }
+
+  get showTurnPinDialog(): boolean {
+    return this.isLocalTurnLocked &&
+      !this.showGameSetup &&
+      !this.gameState.gamePaused &&
+      !this.gameState.gameFinished;
+  }
+
+  get isLocalTurnLocked(): boolean {
+    return this.isLocalHumanGame &&
+      this.unlockedPlayerId !== this.currentPlayer.id;
+  }
+
+  get currentTurnHasPin(): boolean {
+    return !!this.gameState?.gameId &&
+      this.localPlayerPinService.hasPin(
+        this.gameState.gameId,
+        this.currentPlayer.id
+      );
+  }
+
+  get showChallengeRevealDialog(): boolean {
+    return !!this.gameState &&
+      !this.showGameSetup &&
+      !this.gameState.gamePaused &&
+      !this.gameState.gameFinished &&
+      this.gameState.revealDeadline !== undefined;
   }
 
   toggleCard(card: Card): void {
-    if (this.gameState.gamePaused || this.gameState.gameFinished) {
+    if (
+      this.gameState.gamePaused ||
+      this.gameState.gameFinished ||
+      (this.isLocalHumanGame && this.unlockedPlayerId !== this.currentPlayer.id)
+    ) {
       return;
     }
 
@@ -176,7 +323,11 @@ export class GameComponent implements OnDestroy, GameExitGuard {
   }
 
   playSelectedCards(): void {
-    if (this.gameState.gamePaused || this.gameState.gameFinished) {
+    if (
+      this.gameState.gamePaused ||
+      this.gameState.gameFinished ||
+      (this.isLocalHumanGame && this.unlockedPlayerId !== this.currentPlayer.id)
+    ) {
       return;
     }
 
@@ -203,18 +354,24 @@ export class GameComponent implements OnDestroy, GameExitGuard {
     }
 
     this.selectedCards = [];
-    this.challengeFeedback = '';
+    this.lockCurrentLocalTurn();
+    this.challengeResultMessage = '';
     this.persistGameState();
     this.startPendingWinTimer();
     this.scheduleAiTurn();
   }
 
   callSvindli(accuserId: string): void {
-    if (this.gameState.gamePaused || this.gameState.gameFinished) {
+    if (
+      this.gameState.gamePaused ||
+      this.gameState.gameFinished ||
+      (this.isLocalHumanGame && this.unlockedPlayerId !== this.currentPlayer.id)
+    ) {
       return;
     }
 
     this.clearAiTimer();
+    this.challengeResultMessage = '';
 
     if (
       this.gameState.pendingWinnerId &&
@@ -222,7 +379,6 @@ export class GameComponent implements OnDestroy, GameExitGuard {
       Date.now() >= this.gameState.challengeDeadline
     ) {
       this.finishPendingWin();
-      this.challengeFeedback = 'A 10 másodperces kihívási idő lejárt.';
       return;
     }
 
@@ -230,7 +386,7 @@ export class GameComponent implements OnDestroy, GameExitGuard {
 
     if (this.gameState.gameFinished) {
       this.clearChallengeTimer();
-      this.challengeFeedback = 'A kihívási idő lejárt; a játék véget ért.';
+      this.lockCurrentLocalTurn();
       this.persistGameState();
       return;
     }
@@ -240,19 +396,53 @@ export class GameComponent implements OnDestroy, GameExitGuard {
     }
 
     this.clearAiTimer();
-    this.challengeFeedback =
-      'A lap felfordítva látható. A kihívás eredménye 3 másodperc múlva lép életbe.';
+    this.gameState.challengeRevealStartedAt = Date.now();
+    this.clearGameTimer();
     this.persistGameState();
     this.startPendingWinTimer();
   }
 
+  dismissChallengeResult(): void {
+    if (this.challengeResultShownAt !== undefined) {
+      this.shiftGameDeadlines(Math.max(0, Date.now() - this.challengeResultShownAt));
+      this.challengeResultShownAt = undefined;
+      this.persistGameState();
+    }
+    this.challengeResultMessage = '';
+    this.startGameTimer();
+    this.startPendingWinTimer();
+    this.scheduleAiTurn();
+  }
+
 
   openGameSetup(): void {
+    if (
+      !this.gameState.gameFinished &&
+      this.gameState.gamePaused !== true
+    ) {
+      return;
+    }
+
+    if (this.gameState.gameFinished) {
+      try {
+        this.gameStateStorage.clear();
+      } catch (error) {
+        console.error('Nem sikerült törölni a befejezett játék mentését.', error);
+        this.persistenceError =
+          'A befejezett játék mentését nem sikerült törölni; frissítéskor visszatérhet az eredmény.';
+      }
+    }
+
     this.clearChallengeTimer();
     this.clearAiTimer();
     this.gameMode = this.gameState.players.some(player => player.isAI)
       ? 'computer'
       : 'human';
+    this.localLobbyPhase = 'count';
+    this.localLobbyPlayers = [];
+    this.localLobbyPlayerName = '';
+    this.localLobbyPlayerPin = '';
+    this.localLobbyError = '';
     this.showGameSetup = true;
   }
 
@@ -267,7 +457,15 @@ export class GameComponent implements OnDestroy, GameExitGuard {
     }
 
     this.gameState.pausedAt = Date.now();
+    if (
+      this.isLocalTurnLocked &&
+      this.gameState.localTurnLockedAt !== undefined
+    ) {
+      this.shiftGameDeadlines(Date.now() - this.gameState.localTurnLockedAt);
+      this.gameState.localTurnLockedAt = Date.now();
+    }
     this.gameState.gamePaused = true;
+    this.lockCurrentLocalTurn();
     this.clearGameTimer();
     this.clearChallengeTimer();
     this.clearAiTimer();
@@ -294,11 +492,20 @@ export class GameComponent implements OnDestroy, GameExitGuard {
         this.gameState[deadline] = value + pausedDuration;
       }
     }
+    if (this.gameState.challengeRevealStartedAt !== undefined) {
+      this.gameState.challengeRevealStartedAt += pausedDuration;
+    }
     this.gameState.gamePaused = false;
     this.gameState.pausedAt = undefined;
+    if (this.isLocalHumanGame) {
+      this.unlockedPlayerId = undefined;
+      this.gameState.localTurnLockedAt = Date.now();
+    }
     this.persistGameState();
-    this.startGameTimer();
-    this.startPendingWinTimer();
+    if (!this.showTurnPinDialog) {
+      this.startGameTimer();
+      this.startPendingWinTimer();
+    }
     this.scheduleAiTurn();
   }
 
@@ -323,6 +530,17 @@ export class GameComponent implements OnDestroy, GameExitGuard {
   }
 
   startNewGame(): void {
+    if (
+      this.gameState &&
+      !this.gameState.gameFinished &&
+      this.gameState.gamePaused !== true
+    ) {
+      if (this.isBrowser) {
+        alert('Új játékot csak a jelenlegi parti megállítása vagy befejezése után indíthatsz.');
+      }
+      return;
+    }
+
     if (
       this.gameMode === 'computer' &&
       this.aiOpponentCount !== 2 &&
@@ -355,7 +573,9 @@ export class GameComponent implements OnDestroy, GameExitGuard {
     }
     this.showGameSetup = false;
     this.selectedCards = [];
-    this.challengeFeedback = '';
+    this.challengeResultMessage = '';
+    this.turnPinInput = '';
+    this.turnPinError = '';
     this.clearChallengeTimer();
     this.clearGameTimer();
     this.clearAiTimer();
@@ -377,12 +597,141 @@ export class GameComponent implements OnDestroy, GameExitGuard {
   }
 
   selectGameMode(mode: 'computer' | 'human'): void {
+    if (mode !== this.gameMode) {
+      this.localLobbyPhase = 'count';
+      this.localLobbyPlayers = [];
+      this.localLobbyError = '';
+    }
     this.gameMode = mode;
+  }
+
+  selectHumanPlayerCount(count: number): void {
+    if (count === 3 || count === 4) {
+      this.humanPlayerCount = count;
+    }
+  }
+
+  beginLocalLobby(): void {
+    const profile = this.userService.currentUserSnapshot;
+    if (!profile) {
+      this.localLobbyError =
+        'Az ember elleni játékhoz előbb jelentkezz be. A bejelentkezett játékos lesz az első játékos.';
+      return;
+    }
+
+    this.localLobbyProfileId = profile.id;
+    this.localLobbyProfileName = profile.name.trim() || 'Játékos';
+    this.localLobbyPlayers = [];
+    this.localLobbyPlayerIndex = 0;
+    this.localLobbyPlayerName = this.localLobbyProfileName;
+    this.localLobbyPlayerPin = '';
+    this.localLobbyError = '';
+    this.localLobbyPhase = 'credentials';
+    this.localLobbyPlayerName = '';
+    this.localLobbyPlayerPin = '';
+    this.localLobbyError = '';
+  }
+
+  async saveLocalLobbyPlayer(): Promise<void> {
+    const name = this.localLobbyPlayerIndex === 0
+      ? this.localLobbyProfileName
+      : this.localLobbyPlayerName.trim();
+    const pin = this.localLobbyPlayerPin;
+    if (!name || (this.localLobbyPlayerIndex > 0 && name.length > 20)) {
+      this.localLobbyError = 'Adj meg egy 1–20 karakteres becenevet.';
+      return;
+    }
+    if (this.localLobbyPlayers.some(
+      player => player.name.toLocaleLowerCase() === name.toLocaleLowerCase()
+    )) {
+      this.localLobbyError = 'Minden játékosnak külön becenevet válasszatok.';
+      return;
+    }
+    if (!/^\d{4}$/.test(pin)) {
+      this.localLobbyError = 'A PIN pontosan 4 számjegyből álljon.';
+      return;
+    }
+
+    this.localLobbyPlayers.push({ name, pin });
+    this.localLobbyPlayerIndex++;
+    this.localLobbyError = '';
+    if (this.localLobbyPlayerIndex < this.humanPlayerCount) {
+      this.localLobbyPhase = 'credentials';
+      this.localLobbyPlayerName = '';
+      this.localLobbyPlayerPin = '';
+      return;
+    }
+
+    try {
+      const state = this.createNewGameState(
+        'human',
+        0,
+        this.localLobbyPlayers.map(player => player.name)
+      );
+      const pins = Object.fromEntries(
+        this.localLobbyPlayers.map((player, index) => [
+          state.players[index].id,
+          player.pin,
+        ])
+      );
+      await this.localPlayerPinService.savePins(state.gameId!, pins);
+      this.startCreatedGame(state, this.localLobbyProfileId);
+    } catch (error) {
+      console.error('Nem sikerült elindítani a PIN-védett helyi játékot.', error);
+      this.localLobbyPlayerIndex = this.humanPlayerCount - 1;
+      this.localLobbyPlayers.pop();
+      this.localLobbyPhase = 'credentials';
+      this.localLobbyError =
+        'A PIN-ek mentése nem sikerült. Ellenőrizd a böngésző tárhelyét, majd próbáld újra.';
+    }
+  }
+
+  async unlockCurrentTurn(): Promise<void> {
+    const gameId = this.gameState.gameId;
+    if (!gameId || !/^\d{4}$/.test(this.turnPinInput)) {
+      this.turnPinError = 'A PIN pontosan 4 számjegyből álljon.';
+      return;
+    }
+
+    try {
+      if (!this.currentTurnHasPin) {
+        await this.localPlayerPinService.setPin(
+          gameId,
+          this.currentPlayer.id,
+          this.turnPinInput
+        );
+      } else if (!await this.localPlayerPinService.verifyPin(
+        gameId,
+        this.currentPlayer.id,
+        this.turnPinInput
+      )) {
+        this.turnPinError = 'A PIN nem megfelelő. Próbáld újra.';
+        this.turnPinInput = '';
+        return;
+      }
+
+      const lockedDuration = this.gameState.localTurnLockedAt === undefined
+        ? 0
+        : Date.now() - this.gameState.localTurnLockedAt;
+      this.shiftGameDeadlines(lockedDuration);
+      this.gameState.localTurnLockedAt = undefined;
+      this.unlockedPlayerId = this.currentPlayer.id;
+      this.turnPinInput = '';
+      this.turnPinError = '';
+      this.persistGameState();
+      this.startGameTimer();
+      this.startPendingWinTimer();
+    } catch (error) {
+      console.error('Nem sikerült ellenőrizni a játékos PIN-kódját.', error);
+      this.turnPinError =
+        'A PIN ellenőrzése nem sikerült. Ellenőrizd a böngésző tárhelyét.';
+    }
   }
 
   private createNewGameState(
     mode: 'computer' | 'human',
-    aiOpponentCount: number
+    aiOpponentCount: number,
+    humanPlayerNames?: string[]
   ): GameState {
     const players =
       mode === 'computer'
@@ -395,9 +744,10 @@ export class GameComponent implements OnDestroy, GameExitGuard {
               isAI: true,
             })),
           ]
-        : Array.from({ length: 4 }, (_, index) => ({
+        : Array.from({ length: humanPlayerNames?.length ?? 4 }, (_, index) => ({
             id: `human-${index + 1}`,
-            name: index === 0 ? 'Te (Játékos 1)' : `Játékos ${index + 1}`,
+            name: humanPlayerNames?.[index] ??
+              (index === 0 ? 'Te (Játékos 1)' : `Játékos ${index + 1}`),
             cards: [],
             isAI: false,
           }));
@@ -406,7 +756,56 @@ export class GameComponent implements OnDestroy, GameExitGuard {
       this.gameService.generateDeck()
     );
 
-    return this.gameService.dealCards(players, deck);
+    const gameState = this.gameService.dealCards(players, deck);
+    gameState.currentPlayerIndex = Math.floor(
+      Math.random() * gameState.players.length
+    );
+    return gameState;
+  }
+
+  private startCreatedGame(gameState: GameState, profileId?: string): void {
+    this.gameState = gameState;
+    this.gameState.profileId = profileId ??
+      this.userService.currentUserSnapshot?.id;
+    this.showGameSetup = false;
+    this.selectedCards = [];
+    this.lockCurrentLocalTurn();
+    this.challengeResultMessage = '';
+    this.clearChallengeTimer();
+    this.clearGameTimer();
+    this.clearAiTimer();
+    this.persistGameState();
+    this.startGameTimer();
+    this.scheduleAiTurn();
+  }
+
+  private lockCurrentLocalTurn(): void {
+    if (this.isLocalHumanGame) {
+      this.unlockedPlayerId = undefined;
+      this.turnPinInput = '';
+      this.turnPinError = '';
+      const startedLock = this.gameState.localTurnLockedAt === undefined;
+      this.gameState.localTurnLockedAt ??= Date.now();
+      this.clearGameTimer();
+      this.clearChallengeTimer();
+      if (startedLock) {
+        this.persistGameState();
+      }
+    }
+  }
+
+  private shiftGameDeadlines(duration: number): void {
+    for (const deadline of [
+      'gameDeadline',
+      'challengeDeadline',
+      'aiFinalChallengeDeadline',
+      'revealDeadline',
+    ] as const) {
+      const value = this.gameState[deadline];
+      if (value !== undefined) {
+        this.gameState[deadline] = value + duration;
+      }
+    }
   }
 
   formatTime(seconds: number): string {
@@ -431,6 +830,13 @@ export class GameComponent implements OnDestroy, GameExitGuard {
       this.gameState.gameDeadline = this.gameState.startedAt + 15 * 60 * 1000;
       updated = true;
     }
+    if (
+      this.gameState.revealDeadline !== undefined &&
+      this.gameState.challengeRevealStartedAt === undefined
+    ) {
+      this.gameState.challengeRevealStartedAt = Date.now();
+      updated = true;
+    }
     if (updated) {
       this.persistGameState();
     }
@@ -441,7 +847,10 @@ export class GameComponent implements OnDestroy, GameExitGuard {
     if (
       !this.isBrowser ||
       this.gameState.gameFinished ||
-      this.gameState.gamePaused
+      this.gameState.gamePaused ||
+      !!this.challengeResultMessage ||
+      this.gameState.revealDeadline !== undefined ||
+      this.isLocalTurnLocked
     ) {
       return;
     }
@@ -453,7 +862,6 @@ export class GameComponent implements OnDestroy, GameExitGuard {
         this.clearGameTimer();
         this.clearChallengeTimer();
         this.clearAiTimer();
-        this.challengeFeedback = 'Lejárt a 15 perces játékidő.';
         this.persistGameState();
         void this.processCompletedGame();
         return;
@@ -483,37 +891,50 @@ export class GameComponent implements OnDestroy, GameExitGuard {
     if (
       !this.gameState.gameFinished ||
       this.gameState.rewardProcessed ||
-      !this.hasAiOpponents ||
       !this.gameState.gameId ||
       !this.gameState.profileId
     ) {
       return;
     }
 
+    const mode = this.hasAiOpponents ? 'computer' : 'human';
+    const profilePlayerId = this.hasAiOpponents ? 'human' : 'human-1';
     const winnerIds = this.gameState.winnerIds ??
       (this.gameState.winnerId ? [this.gameState.winnerId] : []);
     const outcome = this.gameState.isDraw || winnerIds.length > 1
       ? 'draw'
-      : winnerIds.includes('human')
+      : winnerIds.includes(profilePlayerId)
         ? 'win'
         : 'loss';
     try {
-      const recorded = await this.userService.recordAiGameResult(
+      const recorded = await this.userService.recordGameResult(
         this.gameState.profileId,
         this.gameState.gameId,
-        outcome
+        outcome,
+        mode
       );
       this.gameState.rewardProcessed = true;
       this.rewardMessage = recorded
-        ? outcome === 'win'
+        ? mode === 'computer' && outcome === 'win'
           ? 'A győzelemért 15 érme került a profilodra.'
-          : 'A játék eredménye rögzítve lett a profilodon.'
-        : 'A játék jutalma már korábban rögzítve lett.';
+          : `A játék eredménye (${this.outcomeLabel(outcome)}) rögzítve lett a profilodon.`
+        : 'A játék eredménye már korábban rögzítve lett.';
       this.persistGameState();
     } catch (error) {
       console.error('Nem sikerült rögzíteni a játék eredményét.', error);
       this.rewardMessage =
         'A játék véget ért, de az eredményt nem sikerült a profilhoz menteni.';
+    }
+  }
+
+  private outcomeLabel(outcome: 'win' | 'loss' | 'draw'): string {
+    switch (outcome) {
+      case 'win':
+        return 'győzelem';
+      case 'draw':
+        return 'döntetlen';
+      case 'loss':
+        return 'vereség';
     }
   }
 
@@ -552,7 +973,12 @@ export class GameComponent implements OnDestroy, GameExitGuard {
   private startPendingWinTimer(): void {
     this.clearChallengeTimer();
 
-    if (!this.isBrowser || this.gameState.gamePaused) {
+    if (
+      !this.isBrowser ||
+      this.gameState.gamePaused ||
+      !!this.challengeResultMessage ||
+      this.isLocalTurnLocked
+    ) {
       this.updateChallengeCountdown();
       return;
     }
@@ -602,8 +1028,13 @@ export class GameComponent implements OnDestroy, GameExitGuard {
       return;
     }
 
+    const revealStartedAt = this.gameState.challengeRevealStartedAt;
+    if (revealStartedAt !== undefined) {
+      this.shiftGameDeadlines(Math.max(0, Date.now() - revealStartedAt));
+      this.gameState.challengeRevealStartedAt = undefined;
+    }
     this.clearChallengeTimer();
-    this.challengeFeedback = wasBluff
+    this.challengeResultMessage = wasBluff
       ? `Sikeres leleplezés! A blöffölő felvette a dobóhalmot. ` +
         `${this.currentPlayer.name} következik, a bemondás: ` +
         `${this.gameState.nextCardValue}.`
@@ -612,10 +1043,15 @@ export class GameComponent implements OnDestroy, GameExitGuard {
         : `Téves kihívás! A kihívó felvette a dobóhalmot. ` +
           `${this.currentPlayer.name} következik, a bemondás: ` +
           `${this.gameState.nextCardValue}.`;
+    this.challengeResultShownAt = this.gameState.gameFinished
+      ? undefined
+      : Date.now();
     this.persistGameState();
     if (this.gameState.gameFinished) {
       this.clearGameTimer();
       void this.processCompletedGame();
+    } else {
+      this.startGameTimer();
     }
     this.scheduleAiTurn();
   }
@@ -644,6 +1080,7 @@ export class GameComponent implements OnDestroy, GameExitGuard {
       !this.isBrowser ||
       this.gameState.gameFinished ||
       this.gameState.gamePaused ||
+      !!this.challengeResultMessage ||
       this.gameState.pendingWinnerId !== undefined ||
       this.gameState.revealDeadline !== undefined ||
       !this.currentPlayer.isAI
@@ -660,6 +1097,7 @@ export class GameComponent implements OnDestroy, GameExitGuard {
     if (
       this.gameState.gameFinished ||
       this.gameState.gamePaused ||
+      !!this.challengeResultMessage ||
       this.gameState.pendingWinnerId !== undefined ||
       this.gameState.revealDeadline !== undefined ||
       !this.currentPlayer.isAI
@@ -696,7 +1134,6 @@ export class GameComponent implements OnDestroy, GameExitGuard {
       return;
     }
 
-    this.challengeFeedback = 'Az AI-ellenfél lerakott egy lapot.';
     this.persistGameState();
     this.startPendingWinTimer();
     this.scheduleAiTurn();

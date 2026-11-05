@@ -11,7 +11,6 @@ import { GameStateStorageService } from '../game/game-state-storage.service';
   styleUrls: ['./main.component.scss']
 })
 export class MainComponent {
-  isChoosingGameMode = false;
   hasPausedGame = false;
   storageError = '';
 
@@ -28,12 +27,8 @@ export class MainComponent {
     }
   }
 
-  showGameModeChoice(): void {
-    this.isChoosingGameMode = true;
-  }
-
-  startGame(opponent: 'computer' | 'human'): void {
-    this.router.navigate(['/game'], { queryParams: { opponent } });
+  startNewGame(): void {
+    this.router.navigate(['/game'], { queryParams: { setup: 'true' } });
   }
 
   resumeGame(): void {

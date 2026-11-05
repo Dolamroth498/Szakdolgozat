@@ -71,6 +71,35 @@ describe('GameStateStorageService', () => {
     expect(storage.load()).toEqual(pendingGameState);
   });
 
+  it('restores the number of rounds started', () => {
+    const stateWithStartedRounds: GameState = {
+      ...gameState,
+      roundsStarted: 3,
+    };
+
+    storage.save(stateWithStartedRounds);
+
+    expect(storage.load()).toEqual({
+      ...stateWithStartedRounds,
+      moveCount: 0,
+    });
+  });
+
+  it('restores bluff and successful challenge counters', () => {
+    const stateWithBluffStats: GameState = {
+      ...gameState,
+      successfulBluffCount: 2,
+      successfulSvindliCount: 1,
+    };
+
+    storage.save(stateWithBluffStats);
+
+    expect(storage.load()).toEqual({
+      ...stateWithBluffStats,
+      moveCount: 0,
+    });
+  });
+
   it('restores a challenge while the played card is being revealed', () => {
     const revealGameState: GameState = {
       ...gameState,

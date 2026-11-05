@@ -5,13 +5,6 @@
     Játék folytatása
   </button>
   <div class="actions">
-    <ng-container *ngIf="isChoosingGameMode; else newGame">
-      <p>Kivel szeretnél játszani?</p>
-      <button (click)="startGame('computer')">Gép ellen</button>
-      <button (click)="startGame('human')">Emberek ellen</button>
-    </ng-container>
-    <ng-template #newGame>
-      <button (click)="showGameModeChoice()">Új játék</button>
-    </ng-template>
+    <button type="button" (click)="startNewGame()">Új játék</button>
   </div>
 </div>

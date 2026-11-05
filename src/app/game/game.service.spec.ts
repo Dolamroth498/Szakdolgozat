@@ -24,6 +24,8 @@ describe('GameService', () => {
       discardPile: [],
       currentPlayerIndex: 0,
       nextCardValue: 'VII',
+      successfulBluffCount: 0,
+      successfulSvindliCount: 0,
       moveCount: 1,
       gameFinished: false,
     };
@@ -62,12 +64,42 @@ describe('GameService', () => {
     expect(players.every(player => player.cards.length === 0)).toBeTrue();
     expect(state.gameDeadline).toBe(state.startedAt! + 15 * 60 * 1000);
     expect(state.gameId).toBeTruthy();
+    expect(state.roundsStarted).toBe(1);
   });
 
   it('rejects dealing when there are no players', () => {
     expect(() => service.dealCards([], service.generateDeck())).toThrowError(
       RangeError
     );
+  });
+
+  it('counts a new round when the sequence advances from ace to seven', () => {
+    const state = createState([
+      { suit: 'piros', value: 'VII' },
+      { suit: 'zöld', value: 'VIII' },
+    ]);
+    state.nextCardValue = 'ász';
+    state.roundsStarted = 1;
+
+    expect(
+      service.playMove('1', [state.players[0].cards[0]], 'ász', state)
+    ).toBeTrue();
+
+    expect(state.nextCardValue).toBe('VII');
+    expect(state.roundsStarted).toBe(2);
+  });
+
+  it('counts a bluff as successful when the next valid move passes its challenge', () => {
+    const bluffCard: Card = { suit: 'piros', value: 'VIII' };
+    const nextCard: Card = { suit: 'makk', value: 'VIII' };
+    const state = createState([bluffCard, { suit: 'zöld', value: 'IX' }]);
+    state.players[1].cards.push(nextCard);
+
+    expect(service.playMove('1', [bluffCard], 'VII', state)).toBeTrue();
+    expect(state.successfulBluffCount).toBe(0);
+
+    expect(service.playMove('2', [nextCard], 'VIII', state)).toBeTrue();
+    expect(state.successfulBluffCount).toBe(1);
   });
 
   it('rejects a move from a player whose turn it is not', () => {
@@ -251,6 +283,7 @@ describe('GameService', () => {
     expect(service.finishSvindliChallenge(state)).toBeTrue();
     expect(state.gameFinished).toBeTrue();
     expect(state.winnerId).toBe('1');
+    expect(state.successfulSvindliCount).toBe(0);
     expect(state.pendingWinnerId).toBeUndefined();
     expect(state.challengeDeadline).toBeUndefined();
     expect(state.aiFinalChallengeDeadline).toBeUndefined();
@@ -294,11 +327,24 @@ describe('GameService', () => {
     expect(state.currentPlayerIndex).toBe(1);
     expect(state.nextCardValue).toBe('VII');
     expect(state.lastMove).toBeUndefined();
+    expect(state.successfulSvindliCount).toBe(1);
+    expect(state.successfulBluffCount).toBe(0);
 
     expect(service.playMove('2', [nextPlayerCard], state.nextCardValue, state))
       .toBeTrue();
     expect(state.lastMove?.declaredValue).toBe('VII');
     expect(state.nextCardValue).toBe('VIII');
+  });
+
+  it('counts an unchallenged final bluff when its challenge period expires', () => {
+    const bluffCard: Card = { suit: 'piros', value: 'ász' };
+    const state = createState([bluffCard]);
+
+    expect(service.playMove('1', [bluffCard], 'VII', state)).toBeTrue();
+    state.challengeDeadline = Date.now() - 1;
+
+    expect(service.finishPendingWin(state)).toBeTrue();
+    expect(state.successfulBluffCount).toBe(1);
   });
 
   it('gives the pile to a mistaken accuser and advances to the following value', () => {

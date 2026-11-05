@@ -40,9 +40,9 @@ service cloud.firestore {
         && request.resource.data.name.size() <= 50
         && request.resource.data.email == request.auth.token.email
         && request.resource.data.backgrounds is list
-        && request.resource.data.backgrounds.size() == 0
+        && request.resource.data.backgrounds == ['felt-green']
         && request.resource.data.cardBacks is list
-        && request.resource.data.cardBacks.size() == 0
+        && request.resource.data.cardBacks == ['back-red']
         && (!('selectedBackground' in request.resource.data)
           || request.resource.data.selectedBackground == 'felt-green')
         && (!('selectedCardBack' in request.resource.data)

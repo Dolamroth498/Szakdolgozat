@@ -33,38 +33,76 @@
     <p *ngIf="successMessage" class="message success" role="status">{{ successMessage }}</p>
 
     <section class="item-grid" aria-label="Megvásárolható tárgyak">
-      <article class="item-card" *ngFor="let item of visibleItems">
-        <div class="preview" [ngClass]="item.previewClass" [attr.aria-label]="item.name + ' előnézete'">
-          <span *ngIf="item.category === 'cardBack'">H</span>
-          <span *ngIf="item.category === 'background'">♠ ♥ ♣ ♦</span>
-        </div>
-        <div class="item-details">
-          <h2>{{ item.name }}</h2>
-          <p>{{ item.description }}</p>
-          <p class="price">🪙 {{ item.price }}</p>
-          <button
-            *ngIf="!isOwned(item, user.backgrounds, user.cardBacks)"
-            type="button"
-            [disabled]="busyItemId === item.id || user.coins < item.price"
-            (click)="purchase(item)">
-            {{ busyItemId === item.id ? 'Folyamatban…' : 'Megveszem' }}
-          </button>
-          <button
-            *ngIf="isOwned(item, user.backgrounds, user.cardBacks) && !isEquipped(item, user.selectedBackground, user.selectedCardBack)"
-            type="button"
-            [disabled]="busyItemId === item.id"
-            (click)="equip(item)">
-            {{ busyItemId === item.id ? 'Folyamatban…' : 'Használat' }}
-          </button>
-          <span
-            *ngIf="isOwned(item, user.backgrounds, user.cardBacks) && isEquipped(item, user.selectedBackground, user.selectedCardBack)"
-            class="equipped">
-            Használatban
-          </span>
-          <small *ngIf="!isOwned(item, user.backgrounds, user.cardBacks) && user.coins < item.price">
-            Még {{ item.price - user.coins }} érme hiányzik.
-          </small>
-        </div>
+      <article
+        class="item-card"
+        [class.card-back-item]="item.category === 'cardBack'"
+        *ngFor="let item of visibleItems">
+        <ng-container *ngIf="item.category === 'cardBack'; else backgroundItem">
+          <div class="card-back-item-content">
+            <h2>{{ item.name }}</h2>
+            <div class="preview" [ngClass]="item.previewClass" [attr.aria-label]="item.name + ' előnézete'">
+              <span>H</span>
+            </div>
+            <div class="card-back-item-footer">
+              <p class="price">🪙 {{ item.price }}</p>
+              <div class="card-back-item-action">
+                <button
+                  *ngIf="!isOwned(item, user.backgrounds, user.cardBacks)"
+                  type="button"
+                  [disabled]="busyItemId === item.id || user.coins < item.price"
+                  (click)="purchase(item)">
+                  {{ busyItemId === item.id ? 'Folyamatban…' : 'Megveszem' }}
+                </button>
+                <button
+                  *ngIf="isOwned(item, user.backgrounds, user.cardBacks) && !isEquipped(item, user.selectedBackground, user.selectedCardBack)"
+                  type="button"
+                  [disabled]="busyItemId === item.id"
+                  (click)="equip(item)">
+                  {{ busyItemId === item.id ? 'Folyamatban…' : 'Használat' }}
+                </button>
+                <span
+                  *ngIf="isOwned(item, user.backgrounds, user.cardBacks) && isEquipped(item, user.selectedBackground, user.selectedCardBack)"
+                  class="equipped">
+                  Használatban
+                </span>
+              </div>
+            </div>
+            <p *ngIf="item.creator" class="item-creator">Készítő: {{ item.creator }}</p>
+          </div>
+        </ng-container>
+
+        <ng-template #backgroundItem>
+          <div class="preview" [ngClass]="item.previewClass" [attr.aria-label]="item.name + ' előnézete'">
+            <span>♠ ♥ ♣ ♦</span>
+          </div>
+          <div class="item-details">
+            <h2>{{ item.name }}</h2>
+            <p>{{ item.description }}</p>
+            <p class="price">🪙 {{ item.price }}</p>
+            <button
+              *ngIf="!isOwned(item, user.backgrounds, user.cardBacks)"
+              type="button"
+              [disabled]="busyItemId === item.id || user.coins < item.price"
+              (click)="purchase(item)">
+              {{ busyItemId === item.id ? 'Folyamatban…' : 'Megveszem' }}
+            </button>
+            <button
+              *ngIf="isOwned(item, user.backgrounds, user.cardBacks) && !isEquipped(item, user.selectedBackground, user.selectedCardBack)"
+              type="button"
+              [disabled]="busyItemId === item.id"
+              (click)="equip(item)">
+              {{ busyItemId === item.id ? 'Folyamatban…' : 'Használat' }}
+            </button>
+            <span
+              *ngIf="isOwned(item, user.backgrounds, user.cardBacks) && isEquipped(item, user.selectedBackground, user.selectedCardBack)"
+              class="equipped">
+              Használatban
+            </span>
+            <small *ngIf="!isOwned(item, user.backgrounds, user.cardBacks) && user.coins < item.price">
+              Még {{ item.price - user.coins }} érme hiányzik.
+            </small>
+          </div>
+        </ng-template>
       </article>
     </section>
   </ng-container>
