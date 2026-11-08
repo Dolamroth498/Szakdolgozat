@@ -164,6 +164,12 @@ export class GameComponent implements OnDestroy, GameExitGuard {
       .filter((name): name is string => name !== undefined);
   }
 
+  get forfeitedPlayerName(): string | undefined {
+    return this.gameState.players.find(
+      player => player.id === this.gameState.forfeitedPlayerId
+    )?.name;
+  }
+
   playerPosition(index: number): string {
     const humanIndex = this.gameState.players.findIndex(player => !player.isAI);
     const playerIndex = this.isLocalHumanGame
@@ -901,7 +907,9 @@ export class GameComponent implements OnDestroy, GameExitGuard {
     const profilePlayerId = this.hasAiOpponents ? 'human' : 'human-1';
     const winnerIds = this.gameState.winnerIds ??
       (this.gameState.winnerId ? [this.gameState.winnerId] : []);
-    const outcome = this.gameState.isDraw || winnerIds.length > 1
+    const outcome = this.gameState.forfeitedPlayerId === profilePlayerId
+      ? 'loss'
+      : this.gameState.isDraw || winnerIds.length > 1
       ? 'draw'
       : winnerIds.includes(profilePlayerId)
         ? 'win'

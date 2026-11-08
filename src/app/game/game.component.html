@@ -137,14 +137,18 @@
   <section class="result-dialog">
     <h2 id="game-result-title">Játék vége</h2>
 
-    <p *ngIf="gameState.isDraw || winnerNames.length > 1" class="result-winner">
+    <p *ngIf="gameState.isDraw" class="result-winner">
       Döntetlen!
       <span *ngIf="winnerNames.length">
         A legkevesebb lapja: {{ winnerNames.join(', ') }}
       </span>
     </p>
-    <p *ngIf="!gameState.isDraw && winnerNames.length <= 1" class="result-winner">
-      Győztes: {{ winnerNames[0] || winnerName || 'Nincs győztes' }}
+    <p *ngIf="!gameState.isDraw" class="result-winner">
+      {{ winnerNames.length > 1 ? 'Győztesek' : 'Győztes' }}:
+      {{ winnerNames.join(', ') || winnerName || 'Nincs győztes' }}
+    </p>
+    <p *ngIf="gameState.forfeitedPlayerId">
+      {{ forfeitedPlayerName }} kijelentkezett, ezért elvesztette a partit.
     </p>
 
     <p *ngIf="rewardMessage" role="status">{{ rewardMessage }}</p>

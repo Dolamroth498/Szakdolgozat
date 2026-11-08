@@ -125,6 +125,8 @@ export class GameStateStorageService {
       (state.winnerIds === undefined ||
         (Array.isArray(state.winnerIds) &&
           state.winnerIds.every(id => typeof id === 'string'))) &&
+      (state.forfeitedPlayerId === undefined ||
+        typeof state.forfeitedPlayerId === 'string') &&
       (state.isDraw === undefined || typeof state.isDraw === 'boolean') &&
       (state.aiKnownDiscards === undefined ||
         (Array.isArray(state.aiKnownDiscards) &&

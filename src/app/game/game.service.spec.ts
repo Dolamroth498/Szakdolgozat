@@ -125,6 +125,90 @@ describe('GameService', () => {
     expect(state.gameFinished).toBeFalse();
   });
 
+  it('ends a paused game as a loss when a player forfeits', () => {
+    const state = createState();
+    state.players[0].id = 'human';
+    state.players[0].isAI = false;
+    state.players[0].cards = [
+      { suit: 'piros', value: 'VII' },
+    ];
+    state.players[1].id = 'ai-1';
+    state.players[1].isAI = true;
+    state.players[1].cards = [
+      { suit: 'zöld', value: 'VII' },
+      { suit: 'makk', value: 'VIII' },
+    ];
+    state.players[2].id = 'ai-2';
+    state.players[2].isAI = true;
+    state.players[2].cards = [
+      { suit: 'tök', value: 'VII' },
+      { suit: 'piros', value: 'VIII' },
+      { suit: 'zöld', value: 'IX' },
+    ];
+    state.gamePaused = true;
+    state.pausedAt = Date.now();
+    state.localTurnLockedAt = Date.now();
+    state.pendingWinnerId = 'ai-1';
+    state.challengeDeadline = Date.now() + 10_000;
+    state.aiFinalChallengeDeadline = Date.now() + 5_000;
+
+    expect(service.forfeitGame('human', state)).toBeTrue();
+    expect(state.gameFinished).toBeTrue();
+    expect(state.forfeitedPlayerId).toBe('human');
+    expect(state.winnerIds).toEqual(['ai-1']);
+    expect(state.winnerId).toBe('ai-1');
+    expect(state.isDraw).toBeFalse();
+    expect(state.gamePaused).toBeFalse();
+    expect(state.pausedAt).toBeUndefined();
+    expect(state.pendingWinnerId).toBeUndefined();
+    expect(state.challengeDeadline).toBeUndefined();
+    expect(state.aiFinalChallengeDeadline).toBeUndefined();
+  });
+
+  it('awards a forfeiter tie to the only remaining player in that place', () => {
+    const state = createState();
+    state.players[0].id = 'forfeiter';
+    state.players[0].cards = [{ suit: 'piros', value: 'VII' }];
+    state.players[1].id = 'tied-player';
+    state.players[1].cards = [{ suit: 'zöld', value: 'VII' }];
+    state.players[2].id = 'next-player';
+    state.players[2].cards = [
+      { suit: 'makk', value: 'VII' },
+      { suit: 'tök', value: 'VIII' },
+    ];
+    state.gamePaused = true;
+
+    expect(service.forfeitGame('forfeiter', state)).toBeTrue();
+    expect(state.winnerIds).toEqual(['tied-player']);
+    expect(state.winnerId).toBe('tied-player');
+    expect(state.isDraw).toBeFalse();
+  });
+
+  it('keeps a timeout-style draw when multiple remaining players share the fewest cards', () => {
+    const state = createState();
+    state.players[0].id = 'forfeiter';
+    state.players[0].cards = [{ suit: 'piros', value: 'VII' }];
+    state.players[1].id = 'tied-player-1';
+    state.players[1].cards = [{ suit: 'zöld', value: 'VII' }];
+    state.players[2].id = 'tied-player-2';
+    state.players[2].cards = [{ suit: 'makk', value: 'VII' }];
+    state.gamePaused = true;
+
+    expect(service.forfeitGame('forfeiter', state)).toBeTrue();
+    expect(state.winnerIds).toEqual(['tied-player-1', 'tied-player-2']);
+    expect(state.winnerId).toBeUndefined();
+    expect(state.isDraw).toBeTrue();
+  });
+
+  it('does not allow forfeiting an active or completed game', () => {
+    const state = createState();
+
+    expect(service.forfeitGame('1', state)).toBeFalse();
+    state.gamePaused = true;
+    state.gameFinished = true;
+    expect(service.forfeitGame('1', state)).toBeFalse();
+  });
+
   it('rejects duplicate or invalid cards without changing the game state', () => {
     const card: Card = { suit: 'piros', value: 'VII' };
     const secondCard: Card = { suit: 'zöld', value: 'VIII' };

@@ -11,8 +11,10 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
 import { AuthService } from './auth/auth.service';
 import { GameControlService } from './game/game-control.service';
+import { GameService } from './game/game.service';
 import { GameStateStorageService } from './game/game-state-storage.service';
 import { GameState } from './game/game.state.model';
+import { UserService } from './user/user.service';
 
 @Component({
   selector: 'app-root',
@@ -31,7 +33,9 @@ export class AppComponent {
     private readonly authService: AuthService,
     private readonly router: Router,
     private readonly gameControl: GameControlService,
+    private readonly gameService: GameService,
     private readonly gameStateStorage: GameStateStorageService,
+    private readonly userService: UserService,
     destroyRef: DestroyRef,
   ) {
     this.user$ = this.authService.user$;
@@ -68,11 +72,54 @@ export class AppComponent {
     }
 
     try {
+      await this.forfeitPausedGameForCurrentUser();
       await this.authService.logout();
       await this.router.navigateByUrl('/main');
     } catch (error) {
       console.error('Firebase sign-out failed.', error);
       alert('A kijelentkezés nem sikerült. Próbáld újra.');
+    }
+  }
+
+  private async forfeitPausedGameForCurrentUser(): Promise<void> {
+    const userId = await this.authService.getCurrentUserId();
+    const gameState = this.gameStateStorage.load();
+    if (
+      !gameState ||
+      gameState.gameFinished ||
+      gameState.gamePaused !== true ||
+      gameState.profileId !== userId
+    ) {
+      return;
+    }
+
+    const profilePlayerId = gameState.players.some(player => player.isAI)
+      ? 'human'
+      : 'human-1';
+    if (!this.gameService.forfeitGame(profilePlayerId, gameState)) {
+      return;
+    }
+
+    this.gameStateStorage.save(gameState);
+    if (!gameState.gameId || !gameState.profileId) {
+      return;
+    }
+
+    try {
+      await this.userService.recordGameResult(
+        gameState.profileId,
+        gameState.gameId,
+        'loss',
+        gameState.players.some(player => player.isAI) ? 'computer' : 'human'
+      );
+      gameState.rewardProcessed = true;
+      this.gameStateStorage.save(gameState);
+    } catch (error) {
+      console.error('Nem sikerült rögzíteni a kijelentkezés miatti vereséget.', error);
+      alert(
+        'A parti vereségként lett lezárva, de az eredmény mentése nem sikerült. ' +
+        'A mentés a játék újbóli megnyitásakor újrapróbálható.'
+      );
     }
   }
 

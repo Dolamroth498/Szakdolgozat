@@ -145,6 +145,34 @@ describe('GameStateStorageService', () => {
     });
   });
 
+  it('restores a completed game with its forfeiting player', () => {
+    const forfeitedGameState: GameState = {
+      ...gameState,
+      players: [
+        ...gameState.players,
+        {
+          id: 'player-2',
+          name: 'Player 2',
+          cards: [],
+          isAI: false,
+        },
+      ],
+      gameFinished: true,
+      gamePaused: false,
+      forfeitedPlayerId: 'player-1',
+      winnerIds: ['player-2'],
+      winnerId: 'player-2',
+      isDraw: false,
+    };
+
+    storage.save(forfeitedGameState);
+
+    expect(storage.load()).toEqual({
+      ...forfeitedGameState,
+      moveCount: 0,
+    });
+  });
+
   it('recovers the latest AI-played card from a saved game without AI memory', () => {
     const savedState: GameState = {
       ...gameState,

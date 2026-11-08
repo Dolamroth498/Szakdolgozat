@@ -308,12 +308,7 @@ export class GameService {
       return false;
     }
 
-    const fewestCards = Math.min(
-      ...gameState.players.map(player => player.cards.length)
-    );
-    const winners = gameState.players.filter(
-      player => player.cards.length === fewestCards
-    );
+    const winners = this.findWinnersByCardCount(gameState.players);
 
     gameState.gameFinished = true;
     gameState.winnerIds = winners.map(player => player.id);
@@ -332,6 +327,47 @@ export class GameService {
     gameState.pendingBluffDetected = undefined;
     gameState.revealDeadline = undefined;
     return true;
+  }
+
+  forfeitGame(playerId: string, gameState: GameState): boolean {
+    if (gameState.gameFinished || gameState.gamePaused !== true) {
+      return false;
+    }
+
+    const forfeitingPlayer = gameState.players.find(player => player.id === playerId);
+    if (!forfeitingPlayer) {
+      return false;
+    }
+
+    const remainingPlayers = gameState.players.filter(
+      player => player.id !== playerId
+    );
+    if (remainingPlayers.length === 0) {
+      return false;
+    }
+
+    const winners = this.findWinnersByCardCount(remainingPlayers);
+    gameState.gameFinished = true;
+    gameState.forfeitedPlayerId = playerId;
+    gameState.winnerIds = winners.map(player => player.id);
+    gameState.winnerId = winners.length === 1 ? winners[0].id : undefined;
+    gameState.isDraw = winners.length > 1;
+    gameState.gamePaused = false;
+    gameState.pausedAt = undefined;
+    gameState.localTurnLockedAt = undefined;
+    gameState.pendingWinnerId = undefined;
+    gameState.challengeDeadline = undefined;
+    gameState.aiFinalChallengeDeadline = undefined;
+    gameState.pendingChallengerId = undefined;
+    gameState.pendingBluffDetected = undefined;
+    gameState.revealDeadline = undefined;
+    gameState.challengeRevealStartedAt = undefined;
+    return true;
+  }
+
+  private findWinnersByCardCount<T extends { cards: Card[] }>(players: T[]): T[] {
+    const fewestCards = Math.min(...players.map(player => player.cards.length));
+    return players.filter(player => player.cards.length === fewestCards);
   }
 
   nextTurn(gameState: GameState): void {

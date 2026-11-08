@@ -424,6 +424,40 @@ describe('GameComponent', () => {
     tick(1_000);
   }));
 
+  it('records a forfeited local game as a loss even when several players win', fakeAsync(() => {
+    const finishedGame: GameState = {
+      players: [
+        { id: 'human-1', name: 'Signed in', cards: [], isAI: false },
+        { id: 'human-2', name: 'Opponent 1', cards: [], isAI: false },
+        { id: 'human-3', name: 'Opponent 2', cards: [], isAI: false },
+      ],
+      discardPile: [],
+      gameId: 'forfeited-game-result',
+      profileId: 'signed-in-user',
+      currentPlayerIndex: 0,
+      nextCardValue: 'VII',
+      gameFinished: true,
+      forfeitedPlayerId: 'human-1',
+      winnerIds: ['human-2', 'human-3'],
+      isDraw: false,
+    };
+    TestBed.inject(GameStateStorageService).save(finishedGame);
+
+    const fixture = TestBed.createComponent(GameComponent);
+    fixture.detectChanges();
+    flushMicrotasks();
+
+    expect(userServiceMock.recordGameResult).toHaveBeenCalledWith(
+      'signed-in-user',
+      'forfeited-game-result',
+      'loss',
+      'human'
+    );
+
+    fixture.destroy();
+    tick(1_000);
+  }));
+
   it('keeps the human player at the bottom with visible cards during AI turns', fakeAsync(() => {
     const state: GameState = {
       players: [

@@ -28,6 +28,8 @@ export interface GameState {
 
   winnerIds?: string[];
 
+  forfeitedPlayerId?: string;
+
   isDraw?: boolean;
 
   aiKnownDiscards?: {
