@@ -1,4 +1,7 @@
 <div class="game" [ngClass]="gameTableClass" *ngIf="!showGameSetup">
+  <p *ngIf="gameNotice" class="game-notice" role="alert">
+    {{ gameNotice }}
+  </p>
   <p *ngIf="persistenceError" role="alert">
     {{ persistenceError }}
   </p>
@@ -129,6 +132,31 @@
 </div>
 
 <div
+  *ngIf="showDiscardGameConfirmation"
+  class="challenge-overlay"
+  role="dialog"
+  aria-modal="true"
+  tabindex="-1"
+  (keydown.escape)="cancelDiscardGame()"
+  aria-labelledby="discard-confirmation-title"
+  aria-describedby="discard-confirmation-description">
+  <section class="challenge-dialog">
+    <h2 id="discard-confirmation-title">Parti elvetése?</h2>
+    <p id="discard-confirmation-description">
+      A jelenlegi parti elveszik. Biztosan új játékot indítasz?
+    </p>
+    <div class="discard-confirmation-actions">
+      <button type="button" autofocus (click)="cancelDiscardGame()">Mégse</button>
+      <button
+        type="button"
+        (click)="confirmDiscardGame()">
+        Parti elvetése
+      </button>
+    </div>
+  </section>
+</div>
+
+<div
   *ngIf="gameState?.gameFinished && !showGameSetup"
   class="result-overlay"
   role="dialog"
@@ -205,6 +233,9 @@
 </div>
 
 <div class="game-setup" *ngIf="showGameSetup">
+  <p *ngIf="gameNotice" class="game-notice" role="alert">
+    {{ gameNotice }}
+  </p>
   <p *ngIf="persistenceError" role="alert">
     {{ persistenceError }}
   </p>
@@ -236,6 +267,17 @@
       [attr.aria-pressed]="aiOpponentCount === count"
       (click)="selectAiOpponentCount(count)">
       {{ count }} AI-ellenfél
+    </button>
+
+    <p>Milyen nehézségű AI-ellenfelekkel szeretnél játszani?</p>
+    <button
+      *ngFor="let difficulty of aiDifficulties"
+      class="ai-difficulty"
+      type="button"
+      [class.selected]="aiDifficulty === difficulty.value"
+      [attr.aria-pressed]="aiDifficulty === difficulty.value"
+      (click)="selectAiDifficulty(difficulty.value)">
+      {{ difficulty.label }}
     </button>
 
     <p>A lapokat a választás után osztja ki a játék.</p>

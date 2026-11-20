@@ -90,6 +90,7 @@ describe('GameStateStorageService', () => {
       ...gameState,
       successfulBluffCount: 2,
       successfulSvindliCount: 1,
+      aiDifficulty: 'hard',
     };
 
     storage.save(stateWithBluffStats);
@@ -98,6 +99,17 @@ describe('GameStateStorageService', () => {
       ...stateWithBluffStats,
       moveCount: 0,
     });
+  });
+
+  it('rejects a saved game with an unsupported AI difficulty', () => {
+    window.localStorage.setItem(
+      storageKey,
+      JSON.stringify({ ...gameState, aiDifficulty: 'expert' })
+    );
+
+    expect(() => storage.load()).toThrowError(
+      'A mentett játékállapot formátuma érvénytelen.'
+    );
   });
 
   it('restores a challenge while the played card is being revealed', () => {

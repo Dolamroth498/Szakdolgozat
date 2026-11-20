@@ -3,29 +3,44 @@ import { Card } from './card.model';
 import { GameState } from './game.state.model';
 import { Player } from './game.player.model';
 import { Move } from './move.model';
+import {
+  createAiBeliefs,
+  observeAiMove,
+  revealAiMove,
+  transferAiDiscardBeliefs,
+} from './ai-belief';
+
+const CARD_VALUES = [
+  'VII',
+  'VIII',
+  'IX',
+  'X',
+  'alsó',
+  'felső',
+  'király',
+  'ász',
+];
+
+export function getNextCardValue(currentValue: string): string {
+  const index = CARD_VALUES.indexOf(currentValue);
+  if (index === -1) {
+    throw new RangeError(`Ismeretlen bemondási érték: ${currentValue}`);
+  }
+
+  return CARD_VALUES[(index + 1) % CARD_VALUES.length];
+}
 
 @Injectable({
   providedIn: 'root',
 })
 export class GameService {
-  private readonly values = [
-    'VII',
-    'VIII',
-    'IX',
-    'X',
-    'alsó',
-    'felső',
-    'király',
-    'ász',
-  ];
-
   private readonly suits = ['piros', 'zöld', 'makk', 'tök'];
 
   generateDeck(): Card[] {
     const deck: Card[] = [];
 
     for (const suit of this.suits) {
-      for (const value of this.values) {
+      for (const value of CARD_VALUES) {
         deck.push({ suit, value });
       }
     }
@@ -66,8 +81,9 @@ export class GameService {
       startedAt,
       gameDeadline: startedAt + 15 * 60 * 1000,
       aiKnownDiscards: [],
+      aiBeliefs: createAiBeliefs(dealtPlayers, deck),
       currentPlayerIndex: 0,
-      nextCardValue: this.values[0],
+      nextCardValue: CARD_VALUES[0],
       roundsStarted: 1,
       successfulBluffCount: 0,
       successfulSvindliCount: 0,
@@ -91,7 +107,7 @@ export class GameService {
       gameState.currentPlayerIndex < 0 ||
       gameState.currentPlayerIndex >= gameState.players.length ||
       declaredValue !== gameState.nextCardValue ||
-      !this.values.includes(declaredValue) ||
+      !CARD_VALUES.includes(declaredValue) ||
       cards.length !== 1
     ) {
       return false;
@@ -108,6 +124,16 @@ export class GameService {
       cards.some(card => !player.cards.includes(card))
     ) {
       return false;
+    }
+
+    this.ensureAiBeliefs(gameState);
+    if (gameState.aiBeliefs?.length) {
+      observeAiMove(
+        gameState.aiBeliefs,
+        playerId,
+        cards[0],
+        declaredValue
+      );
     }
 
     this.countUnchallengedBluff(gameState);
@@ -198,6 +224,14 @@ export class GameService {
       card => card.value !== lastMove.declaredValue
     );
 
+    if (gameState.aiBeliefs?.length) {
+      revealAiMove(
+        gameState.aiBeliefs,
+        lastMove.playerId,
+        lastMove.cards
+      );
+    }
+
     gameState.pendingChallengerId = accuserId;
     gameState.pendingBluffDetected = bluffDetected;
     gameState.revealDeadline = Date.now() + 3_000;
@@ -231,6 +265,10 @@ export class GameService {
     }
 
     const bluffDetected = gameState.pendingBluffDetected;
+    const pileRecipient = bluffDetected ? offender : challenger;
+    if (gameState.aiBeliefs?.length) {
+      transferAiDiscardBeliefs(gameState.aiBeliefs, pileRecipient.id);
+    }
 
     if (bluffDetected) {
       gameState.successfulSvindliCount =
@@ -380,17 +418,12 @@ export class GameService {
   }
 
   getNextValue(currentValue: string): string {
-    const index = this.values.indexOf(currentValue);
-    if (index === -1) {
-      throw new RangeError(`Ismeretlen bemondási érték: ${currentValue}`);
-    }
-
-    return this.values[(index + 1) % this.values.length];
+    return getNextCardValue(currentValue);
   }
 
   private advanceCardValue(gameState: GameState, currentValue: string): void {
-    gameState.nextCardValue = this.getNextValue(currentValue);
-    if (gameState.nextCardValue === this.values[0] && !gameState.gameFinished) {
+    gameState.nextCardValue = getNextCardValue(currentValue);
+    if (gameState.nextCardValue === CARD_VALUES[0] && !gameState.gameFinished) {
       gameState.roundsStarted = (gameState.roundsStarted ?? 1) + 1;
     }
   }
@@ -404,6 +437,19 @@ export class GameService {
     ) {
       gameState.successfulBluffCount =
         (gameState.successfulBluffCount ?? 0) + 1;
+    }
+  }
+
+  private ensureAiBeliefs(gameState: GameState): void {
+    if (
+      gameState.aiBeliefs === undefined &&
+      gameState.players.some(player => player.isAI)
+    ) {
+      gameState.aiBeliefs = createAiBeliefs(
+        gameState.players,
+        this.generateDeck(),
+        gameState.discardPile.length
+      );
     }
   }
 }

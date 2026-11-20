@@ -2,6 +2,25 @@ import { Card } from './card.model';
 import { Player } from './game.player.model';
 import { Move } from './move.model';
 
+export type AiDifficulty = 'easy' | 'medium' | 'hard';
+
+export interface AiCardBelief {
+  card: Card;
+  locations: { playerId: string; probability: number }[];
+  discardProbability: number;
+}
+
+export interface AiMoveCardProbability {
+  card: Card;
+  probability: number;
+}
+
+export interface AiPlayerBelief {
+  playerId: string;
+  cards: AiCardBelief[];
+  lastMoveCardProbabilities: AiMoveCardProbability[];
+}
+
 export interface GameState {
 
   players: Player[];
@@ -38,6 +57,10 @@ export interface GameState {
   }[];
 
   aiKnownDiscardCards?: Card[];
+
+  aiBeliefs?: AiPlayerBelief[];
+
+  aiDifficulty?: AiDifficulty;
 
   currentPlayerIndex: number;
 

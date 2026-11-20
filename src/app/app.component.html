@@ -64,6 +64,9 @@
     role="status">
     {{ navigationStateError }}
   </p>
+  <p *ngIf="appError" class="app-error-notice" role="alert">
+    {{ appError }}
+  </p>
 </header>
 
 <div class="page-content">

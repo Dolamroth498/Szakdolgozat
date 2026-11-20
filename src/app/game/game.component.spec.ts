@@ -201,8 +201,10 @@ describe('GameComponent', () => {
     const fixture = TestBed.createComponent(GameComponent);
     fixture.detectChanges();
 
+    fixture.componentInstance.selectAiDifficulty('hard');
     fixture.componentInstance.startNewGame();
     const gameId = fixture.componentInstance.gameState.gameId;
+    expect(fixture.componentInstance.gameState.aiDifficulty).toBe('hard');
     expect(fixture.componentInstance.gameState.profileId).toBeUndefined();
 
     flushMicrotasks();
@@ -210,6 +212,116 @@ describe('GameComponent', () => {
     expect(userServiceMock.getCurrentUserIdWhenReady).toHaveBeenCalled();
     expect(fixture.componentInstance.gameState.profileId).toBe('test-user');
     expect(fixture.componentInstance.gameState.gameId).toBe(gameId);
+    fixture.destroy();
+  }));
+
+  it('renders the selectable AI difficulty with medium selected by default', () => {
+    routeQueryParams['setup'] = 'true';
+    const fixture = TestBed.createComponent(GameComponent);
+    fixture.detectChanges();
+
+    const difficultyButtons = fixture.nativeElement.querySelectorAll(
+      '.ai-difficulty'
+    ) as NodeListOf<HTMLButtonElement>;
+    expect(difficultyButtons.length).toBe(3);
+    expect(
+      Array.from(difficultyButtons).find(button => button.textContent?.includes('Közepes'))
+        ?.getAttribute('aria-pressed')
+    ).toBe('true');
+
+    fixture.destroy();
+  });
+
+  it('shows inline validation when attempting to play without selecting a card', () => {
+    const fixture = TestBed.createComponent(GameComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component.startNewGame();
+
+    component.playSelectedCards();
+    fixture.detectChanges();
+
+    expect(component.gameNotice).toContain('Válassz ki egy lapot');
+    expect(
+      fixture.nativeElement.querySelector('.game-notice[role="alert"]')
+    ).not.toBeNull();
+
+    fixture.destroy();
+  });
+
+  it('uses an in-app confirmation before discarding a paused game', fakeAsync(() => {
+    const fixture = TestBed.createComponent(GameComponent);
+    fixture.detectChanges();
+    const component = fixture.componentInstance;
+    component.startNewGame();
+    component.gameState.gamePaused = true;
+    component.gameState.pausedAt = Date.now();
+    component.showGameSetup = true;
+
+    component.startNewGame();
+    fixture.detectChanges();
+
+    const existingGameId = component.gameState.gameId;
+    expect(component.showDiscardGameConfirmation).toBeTrue();
+    const dialog = fixture.nativeElement.querySelector(
+      '.challenge-overlay[role="dialog"]'
+    ) as HTMLElement | null;
+    expect(dialog).not.toBeNull();
+    expect(dialog?.getAttribute('aria-modal')).toBe('true');
+
+    const cancelButton = Array.from(
+      dialog?.querySelectorAll('button') ?? []
+    ).find(button => button.textContent?.includes('Mégse'));
+    cancelButton?.click();
+    fixture.detectChanges();
+    expect(component.showDiscardGameConfirmation).toBeFalse();
+    expect(component.gameState.gameId).toBe(existingGameId);
+    expect(component.gameState.gamePaused).toBeTrue();
+
+    component.startNewGame();
+    fixture.detectChanges();
+    const discardButton = Array.from(
+      fixture.nativeElement.querySelectorAll(
+        '.challenge-overlay button'
+      ) as NodeListOf<HTMLButtonElement>
+    ).find(button => button.textContent?.includes('Parti elvetése'));
+    discardButton?.click();
+    fixture.detectChanges();
+    expect(component.gameState.gamePaused).toBeFalsy();
+    expect(component.gameState.gameFinished).toBeFalse();
+    expect(component.gameState.gameId).not.toBe(existingGameId);
+
+    fixture.destroy();
+    tick(1);
+  }));
+
+  it('passes the selected difficulty to the AI challenge decision', fakeAsync(() => {
+    spyOn(Math, 'random').and.returnValue(0.99);
+    const aiService = TestBed.inject(AiService);
+    const challengeDecision = spyOn(aiService, 'shouldCallSvindli')
+      .and.returnValue(false);
+    const fixture = TestBed.createComponent(GameComponent);
+    fixture.detectChanges();
+
+    fixture.componentInstance.selectAiDifficulty('hard');
+    fixture.componentInstance.startNewGame();
+    fixture.componentInstance.gameState.lastMove = {
+      playerId: 'human',
+      declaredValue: fixture.componentInstance.gameState.nextCardValue,
+      cards: [{ suit: 'piros', value: 'VII' }],
+      count: 1,
+      timestamp: Date.now(),
+    };
+    fixture.componentInstance.gameState.moveCount = 2;
+
+    tick(3_000);
+
+    expect(challengeDecision).toHaveBeenCalledWith(
+      jasmine.objectContaining({ isAI: true }),
+      fixture.componentInstance.gameState,
+      'hard'
+    );
+
     fixture.destroy();
   }));
 

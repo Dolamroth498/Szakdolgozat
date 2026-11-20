@@ -28,6 +28,7 @@ export class AppComponent {
   gameNavigationLocked = false;
   isGamePage = false;
   navigationStateError = '';
+  appError = '';
 
   constructor(
     private readonly authService: AuthService,
@@ -71,13 +72,14 @@ export class AppComponent {
       return;
     }
 
+    this.appError = '';
     try {
       await this.forfeitPausedGameForCurrentUser();
       await this.authService.logout();
       await this.router.navigateByUrl('/main');
     } catch (error) {
       console.error('Firebase sign-out failed.', error);
-      alert('A kijelentkezés nem sikerült. Próbáld újra.');
+      this.appError = 'A kijelentkezés nem sikerült. Próbáld újra.';
     }
   }
 
@@ -116,10 +118,9 @@ export class AppComponent {
       this.gameStateStorage.save(gameState);
     } catch (error) {
       console.error('Nem sikerült rögzíteni a kijelentkezés miatti vereséget.', error);
-      alert(
+      this.appError =
         'A parti vereségként lett lezárva, de az eredmény mentése nem sikerült. ' +
-        'A mentés a játék újbóli megnyitásakor újrapróbálható.'
-      );
+        'A játék újbóli megnyitásakor újrapróbálható.';
     }
   }
 

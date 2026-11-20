@@ -8,10 +8,11 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { GameService } from './game.service';
 import { GameControlService } from './game-control.service';
 import { GameExitGuard } from './game.guard';
-import { GameState } from './game.state.model';
+import { AiDifficulty, GameState } from './game.state.model';
 import { Card } from './card.model';
 import { GameStateStorageService } from './game-state-storage.service';
 import { AiService } from './ai.service';
+import { createAiBeliefs, revealAiMove } from './ai-belief';
 import { UserService } from '../user/user.service';
 import { LocalPlayerPinService } from './local-player-pin.service';
 
@@ -35,11 +36,23 @@ export class GameComponent implements OnDestroy, GameExitGuard {
 
   aiOpponentCount = 2;
 
+  aiDifficulty: AiDifficulty = 'medium';
+
+  readonly aiDifficulties: { value: AiDifficulty; label: string }[] = [
+    { value: 'easy', label: 'Könnyű' },
+    { value: 'medium', label: 'Közepes' },
+    { value: 'hard', label: 'Nehéz' },
+  ];
+
   humanPlayerCount = 3;
 
   gameMode: 'computer' | 'human' = 'computer';
 
   showGameSetup = false;
+
+  gameNotice = '';
+
+  showDiscardGameConfirmation = false;
 
   localLobbyPhase: 'count' | 'credentials' = 'count';
 
@@ -113,6 +126,30 @@ export class GameComponent implements OnDestroy, GameExitGuard {
       const savedState = this.gameStateStorage.load();
       if (savedState) {
         this.gameState = savedState;
+        this.aiDifficulty = savedState.aiDifficulty ?? 'medium';
+        if (
+          this.gameState.aiBeliefs === undefined &&
+          this.gameState.players.some(player => player.isAI)
+        ) {
+          this.gameState.aiBeliefs = createAiBeliefs(
+            this.gameState.players,
+            this.gameService.generateDeck(),
+            this.gameState.discardPile.length
+          );
+          if (this.gameState.revealDeadline !== undefined && this.gameState.lastMove) {
+            revealAiMove(
+              this.gameState.aiBeliefs,
+              this.gameState.lastMove.playerId,
+              this.gameState.lastMove.cards
+            );
+          }
+        }
+        if (
+          this.gameState.players.some(player => player.isAI) &&
+          this.gameState.aiDifficulty === undefined
+        ) {
+          this.gameState.aiDifficulty = 'medium';
+        }
         this.lockCurrentLocalTurn();
         if (!this.gameState.gameFinished && !this.gameState.gamePaused) {
           this.showGameSetup = false;
@@ -310,6 +347,7 @@ export class GameComponent implements OnDestroy, GameExitGuard {
       return;
     }
 
+    this.gameNotice = '';
     const index =
       this.selectedCards.indexOf(card);
 
@@ -337,10 +375,9 @@ export class GameComponent implements OnDestroy, GameExitGuard {
       return;
     }
 
+    this.gameNotice = '';
     if (this.selectedCards.length === 0) {
-
-      alert('Válassz legalább 1 lapot!');
-
+      this.gameNotice = 'Válassz ki egy lapot a lerakáshoz.';
       return;
     }
 
@@ -353,9 +390,8 @@ export class GameComponent implements OnDestroy, GameExitGuard {
       );
 
     if (!success) {
-
-      alert('Hibás lépés');
-
+      this.gameNotice =
+        'A lépés nem érvényes. Ellenőrizd a köröd és a kiválasztott lapot.';
       return;
     }
 
@@ -520,13 +556,15 @@ export class GameComponent implements OnDestroy, GameExitGuard {
       !this.gameState ||
       this.gameState.gameFinished ||
       this.gameState.gamePaused === true;
-    if (!canLeave && this.isBrowser) {
-      alert('Játék közben nem lehet elhagyni az oldalt. Állítsd meg a játékot vagy fejezd be előbb.');
+    if (!canLeave) {
+      this.gameNotice =
+        'Aktív partit nem lehet elhagyni. Állítsd meg vagy fejezd be a játékot.';
     }
     return canLeave;
   }
 
   cancelGameSetup(): void {
+    this.gameNotice = '';
     this.showGameSetup = false;
     if (!this.gameState.gamePaused) {
       this.startGameTimer();
@@ -536,14 +574,14 @@ export class GameComponent implements OnDestroy, GameExitGuard {
   }
 
   startNewGame(): void {
+    this.gameNotice = '';
     if (
       this.gameState &&
       !this.gameState.gameFinished &&
       this.gameState.gamePaused !== true
     ) {
-      if (this.isBrowser) {
-        alert('Új játékot csak a jelenlegi parti megállítása vagy befejezése után indíthatsz.');
-      }
+      this.gameNotice =
+        'Új játékot csak a jelenlegi parti megállítása vagy befejezése után indíthatsz.';
       return;
     }
 
@@ -555,19 +593,24 @@ export class GameComponent implements OnDestroy, GameExitGuard {
       throw new RangeError('2 és 3 közötti AI-ellenfelet válassz.');
     }
 
-    if (
-      this.gameState &&
-      !this.gameState.gameFinished &&
-      this.isBrowser &&
-      !window.confirm(
-        `Biztosan elveted a jelenlegi partit és új ${
-          this.gameMode === 'computer' ? 'AI-játékot' : 'emberi játékot'
-        } indítasz?`
-      )
-    ) {
+    if (this.gameState && !this.gameState.gameFinished) {
+      this.showDiscardGameConfirmation = true;
       return;
     }
 
+    this.createAndStartNewGame();
+  }
+
+  cancelDiscardGame(): void {
+    this.showDiscardGameConfirmation = false;
+  }
+
+  confirmDiscardGame(): void {
+    this.showDiscardGameConfirmation = false;
+    this.createAndStartNewGame();
+  }
+
+  private createAndStartNewGame(): void {
     this.gameState = this.createNewGameState(
       this.gameMode,
       this.aiOpponentCount
@@ -578,6 +621,7 @@ export class GameComponent implements OnDestroy, GameExitGuard {
       void this.captureGameProfileId(gameId);
     }
     this.showGameSetup = false;
+    this.gameNotice = '';
     this.selectedCards = [];
     this.challengeResultMessage = '';
     this.turnPinInput = '';
@@ -600,6 +644,10 @@ export class GameComponent implements OnDestroy, GameExitGuard {
     if (count === 2 || count === 3) {
       this.aiOpponentCount = count;
     }
+  }
+
+  selectAiDifficulty(difficulty: AiDifficulty): void {
+    this.aiDifficulty = difficulty;
   }
 
   selectGameMode(mode: 'computer' | 'human'): void {
@@ -763,6 +811,9 @@ export class GameComponent implements OnDestroy, GameExitGuard {
     );
 
     const gameState = this.gameService.dealCards(players, deck);
+    if (mode === 'computer') {
+      gameState.aiDifficulty = this.aiDifficulty;
+    }
     gameState.currentPlayerIndex = Math.floor(
       Math.random() * gameState.players.length
     );
@@ -1116,7 +1167,11 @@ export class GameComponent implements OnDestroy, GameExitGuard {
     const aiPlayer = this.currentPlayer;
     if (
       this.gameState.lastMove &&
-      this.aiService.shouldCallSvindli(aiPlayer, this.gameState)
+      this.aiService.shouldCallSvindli(
+        aiPlayer,
+        this.gameState,
+        this.gameState.aiDifficulty ?? 'medium'
+      )
     ) {
       this.callSvindli(aiPlayer.id);
       return;
@@ -1128,7 +1183,8 @@ export class GameComponent implements OnDestroy, GameExitGuard {
 
     const card = this.aiService.chooseCard(
       aiPlayer,
-      this.gameState.nextCardValue
+      this.gameState.nextCardValue,
+      this.gameState
     );
     if (
       !this.gameService.playMove(

@@ -44,6 +44,26 @@ To execute unit tests with the [Karma](https://karma-runner.github.io) test runn
 ng test
 ```
 
+## Running the AI difficulty simulation
+
+Run the seeded 100-game-per-difficulty comparison with:
+
+```bash
+npm run test:ai-simulation
+```
+
+The simulation runs three AI players at the same difficulty in each match and
+uses the application game and AI services. It reports move and bluff counts,
+the share of moves that are bluffs, successful-bluff rate, challenge success
+rate, wins, and draws. Bluff rate is bluffs divided by AI moves, successful
+bluff rate is unchallenged bluffs divided by all AI bluffs, and challenge
+success rate is correct challenges divided by all challenge attempts. The same
+seed is used for corresponding games at each difficulty so the starting
+shuffle can be compared; the run is deterministic. The simulation advances
+the game clock without waiting for real timers and honors the game's 15-minute
+timeout. Its JSON output is printed with the `AI-SIMULATION` prefix by the
+test runner.
+
 ## Testing Firestore security rules
 
 In a separate terminal, start the Firestore emulator for the application:

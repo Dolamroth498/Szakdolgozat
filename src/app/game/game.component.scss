@@ -6,6 +6,21 @@
   text-align: center;
 }
 
+.game-notice {
+  padding: 0.6rem 1rem;
+  border-radius: 0.5rem;
+  background: #fff1ed;
+  color: #6d2119;
+  font-weight: 600;
+}
+
+.discard-confirmation-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
 .game-table {
   position: relative;
   padding: 1.1rem;

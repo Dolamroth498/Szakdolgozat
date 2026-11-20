@@ -7,6 +7,7 @@
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
+    "test:ai-simulation": "ng test --watch=false --include=src/app/game/ai-simulation.spec.ts",
     "test:rules": "node --test tests/firestore.rules.test.mjs",
     "test:rules:emulator": "firebase emulators:exec --only firestore \"node --test tests/firestore.rules.test.mjs\" --project demo-svindli-rules",
     "emulator:firestore": "firebase emulators:start --only firestore --project svindli-25ccf",

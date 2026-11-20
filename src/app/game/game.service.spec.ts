@@ -249,6 +249,39 @@ describe('GameService', () => {
     expect(state.aiKnownDiscards?.[0].cards[0].value).toBe('VIII');
   });
 
+  it('updates AI beliefs when a challenge reveals and transfers the discard pile', () => {
+    const playedCard: Card = { suit: 'piros', value: 'VII' };
+    const state = createState([
+      playedCard,
+      { suit: 'zöld', value: 'VIII' },
+    ]);
+    state.players[1].isAI = true;
+    state.players[1].cards = [{ suit: 'makk', value: 'IX' }];
+
+    expect(service.playMove('1', [playedCard], 'VII', state)).toBeTrue();
+    const belief = state.aiBeliefs?.find(item => item.playerId === '2');
+    expect(belief?.lastMoveCardProbabilities.length).toBe(32);
+
+    expect(service.callSvindli('2', state)).toBeFalse();
+    expect(
+      belief?.lastMoveCardProbabilities.find(
+        move => move.card.suit === playedCard.suit &&
+          move.card.value === playedCard.value
+      )?.probability
+    ).toBe(1);
+
+    state.revealDeadline = Date.now() - 1;
+    expect(service.finishSvindliChallenge(state)).toBeTrue();
+    expect(
+      belief?.cards.find(
+        card =>
+          card.card.suit === playedCard.suit &&
+          card.card.value === playedCard.value
+      )?.locations.find(location => location.playerId === '2')?.probability
+    ).toBe(1);
+    expect(belief?.cards.every(card => card.discardProbability === 0)).toBeTrue();
+  });
+
   it('ends the game when a player plays their last card', () => {
     const lastCard: Card = { suit: 'piros', value: 'VII' };
     const state = createState([lastCard]);

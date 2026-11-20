@@ -147,6 +147,59 @@ export class GameStateStorageService {
               typeof card.suit === 'string' &&
               typeof card.value === 'string'
           ))) &&
+      (state.aiBeliefs === undefined ||
+        (Array.isArray(state.aiBeliefs) &&
+          state.aiBeliefs.every(
+            belief =>
+              typeof belief.playerId === 'string' &&
+              (state.players ?? []).some(
+                player => player.id === belief.playerId && player.isAI
+              ) &&
+              Array.isArray(belief.cards) &&
+              belief.cards.every(cardBelief => {
+                if (
+                  typeof cardBelief.card?.suit !== 'string' ||
+                  typeof cardBelief.card?.value !== 'string' ||
+                  !Array.isArray(cardBelief.locations) ||
+                  typeof cardBelief.discardProbability !== 'number' ||
+                  !Number.isFinite(cardBelief.discardProbability) ||
+                  cardBelief.discardProbability < 0 ||
+                  cardBelief.discardProbability > 1 ||
+                  !cardBelief.locations.every(
+                    location =>
+                      typeof location.playerId === 'string' &&
+                      typeof location.probability === 'number' &&
+                      Number.isFinite(location.probability) &&
+                      location.probability >= 0 &&
+                      location.probability <= 1
+                  )
+                ) {
+                  return false;
+                }
+
+                const totalProbability =
+                  cardBelief.discardProbability +
+                  cardBelief.locations.reduce(
+                    (total, location) => total + location.probability,
+                    0
+                  );
+                return Math.abs(totalProbability - 1) < 1e-5;
+              }) &&
+              Array.isArray(belief.lastMoveCardProbabilities) &&
+              belief.lastMoveCardProbabilities.every(
+                move =>
+                  typeof move.card?.suit === 'string' &&
+                  typeof move.card?.value === 'string' &&
+                  typeof move.probability === 'number' &&
+                  Number.isFinite(move.probability) &&
+                  move.probability >= 0 &&
+                  move.probability <= 1
+              )
+          ))) &&
+      (state.aiDifficulty === undefined ||
+        state.aiDifficulty === 'easy' ||
+        state.aiDifficulty === 'medium' ||
+        state.aiDifficulty === 'hard') &&
       Number.isInteger(state.currentPlayerIndex) &&
       state.currentPlayerIndex! >= 0 &&
       state.currentPlayerIndex! < state.players.length &&
