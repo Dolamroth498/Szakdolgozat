@@ -4,7 +4,7 @@
 
 Az alábbi hat végigjátszási forgatókönyv a regisztrációtól a játékbeli
 jutalmazáson és a ranglista ellenőrzésén át vizsgálja a fő felhasználói
-folyamatokat. A UAT kézi, felhasználói szintű ellenőrzés; nem helyettesíti az
+folyamatokat. A UAT kézi, felhasználói szintű ellenőrzés, nem helyettesíti az
 egységteszteket vagy a Firestore-szabályok tesztjeit.
 
 A teszteket elkülönített tesztkörnyezetben, új tesztfiókkal végezd. Az UAT
@@ -36,7 +36,7 @@ után lehetséges. Ne módosíts közvetlenül adatbázist vagy mentett játék�
 
 ### UAT-01 – Regisztráció és profil létrejötte
 
-**Előfeltétel:** A tesztelő nincs bejelentkezve; rendelkezésre áll még nem
+**Előfeltétel:** A tesztelő nincs bejelentkezve, egy még nem
 használt e-mail-cím.
 
 **Lépések:**
@@ -66,7 +66,7 @@ használt e-mail-cím.
 
 **Elvárt eredmény:**
 - A győztes neve megjelenik az eredményablakban.
-- A bejelentkezett játékos AI elleni győzelme után 15 érme jár; a profil
+- A bejelentkezett játékos AI elleni győzelme után 15 érme jár, a profil
   érmeegyenlege ennyivel nő.
 - A győzelmek és a lejátszott partik száma eggyel nő a Profilban.
 
